@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import db from '../database/connection.js';
+import { supabase } from '../database/supabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -48,46 +48,49 @@ const upload = multer({
  * GET /api/quality-reviews
  * Get all quality reviews with optional filters
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { sample_id, status, severity } = req.query;
     
-    let query = `
-      SELECT 
-        qr.*,
-        s.sample_code,
-        s.name as sample_name,
-        c.name as collection_name,
-        (u.first_name || ' ' || u.last_name) as reviewer_name
-      FROM quality_reviews qr
-      LEFT JOIN samples s ON qr.sample_id = s.id
-      LEFT JOIN collections c ON s.collection_id = c.id
-      LEFT JOIN users u ON qr.reviewer_id = u.id
-      WHERE 1=1
-    `;
+    let query = supabase
+      .from('quality_reviews')
+      .select(`
+        *,
+        sample:samples(sample_code, name, collection:collections(name)),
+        reviewer:users!reviewer_id(first_name, last_name)
+      `);
 
-    const params = [];
-    
     if (sample_id) {
-      query += ' AND qr.sample_id = ?';
-      params.push(sample_id);
+      query = query.eq('sample_id', sample_id);
     }
     
     if (status) {
-      query += ' AND qr.status = ?';
-      params.push(status);
+      query = query.eq('status', status);
     }
 
     if (severity) {
-      query += ' AND qr.severity = ?';
-      params.push(severity);
+      query = query.eq('severity', severity);
     }
 
-    query += ' ORDER BY qr.created_at DESC';
+    query = query.order('created_at', { ascending: false });
 
-    const reviews = db.prepare(query).all(...params);
-    res.json(reviews);
+    const { data: reviews, error } = await query;
+    if (error) throw error;
+
+    // Transform data
+    const transformedReviews = reviews.map(r => ({
+      ...r,
+      sample_code: r.sample?.sample_code,
+      sample_name: r.sample?.name,
+      collection_name: r.sample?.collection?.name,
+      reviewer_name: r.reviewer 
+        ? `${r.reviewer.first_name} ${r.reviewer.last_name}` 
+        : null
+    }));
+
+    res.json(transformedReviews);
   } catch (error) {
+    console.error('Error loading quality reviews:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -96,50 +99,67 @@ router.get('/', (req, res) => {
  * GET /api/quality-reviews/:id
  * Get single quality review with photos and comments
  */
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const review = db.prepare(`
-      SELECT 
-        qr.*,
-        s.sample_code,
-        s.name as sample_name,
-        c.name as collection_name,
-        (u.first_name || ' ' || u.last_name) as reviewer_name,
-        u.email as reviewer_email
-      FROM quality_reviews qr
-      LEFT JOIN samples s ON qr.sample_id = s.id
-      LEFT JOIN collections c ON s.collection_id = c.id
-      LEFT JOIN users u ON qr.reviewer_id = u.id
-      WHERE qr.id = ?
-    `).get(req.params.id);
+    const { data: review, error } = await supabase
+      .from('quality_reviews')
+      .select(`
+        *,
+        sample:samples(sample_code, name, collection:collections(name)),
+        reviewer:users!reviewer_id(first_name, last_name, email)
+      `)
+      .eq('id', req.params.id)
+      .single();
 
-    if (!review) {
-      return res.status(404).json({ error: 'Quality review not found' });
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Quality review not found' });
+      }
+      throw error;
     }
 
     // Get photos
-    const photos = db.prepare(`
-      SELECT * FROM quality_review_photos WHERE quality_review_id = ?
-      ORDER BY uploaded_at DESC
-    `).all(req.params.id);
+    const { data: photos, error: photosError } = await supabase
+      .from('quality_review_photos')
+      .select('*')
+      .eq('quality_review_id', req.params.id)
+      .order('uploaded_at', { ascending: false });
+
+    if (photosError) throw photosError;
 
     // Get comments
-    const comments = db.prepare(`
-      SELECT 
-        qrc.*,
-        (u.first_name || ' ' || u.last_name) as user_name,
-        u.email as user_email
-      FROM quality_review_comments qrc
-      LEFT JOIN users u ON qrc.user_id = u.id
-      WHERE qrc.quality_review_id = ?
-      ORDER BY qrc.created_at ASC
-    `).all(req.params.id);
+    const { data: comments, error: commentsError } = await supabase
+      .from('quality_review_comments')
+      .select(`
+        *,
+        user:users(first_name, last_name, email)
+      `)
+      .eq('quality_review_id', req.params.id)
+      .order('created_at', { ascending: true });
 
-    review.photos = photos;
-    review.comments = comments;
+    if (commentsError) throw commentsError;
 
-    res.json(review);
+    // Transform data
+    const transformedReview = {
+      ...review,
+      sample_code: review.sample?.sample_code,
+      sample_name: review.sample?.name,
+      collection_name: review.sample?.collection?.name,
+      reviewer_name: review.reviewer 
+        ? `${review.reviewer.first_name} ${review.reviewer.last_name}` 
+        : null,
+      reviewer_email: review.reviewer?.email,
+      photos: photos || [],
+      comments: comments?.map(c => ({
+        ...c,
+        user_name: c.user ? `${c.user.first_name} ${c.user.last_name}` : null,
+        user_email: c.user?.email
+      })) || []
+    };
+
+    res.json(transformedReview);
   } catch (error) {
+    console.error('Error loading quality review:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -148,29 +168,46 @@ router.get('/:id', (req, res) => {
  * POST /api/quality-reviews
  * Create new quality review
  */
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { sample_id, reviewer_id, issue_type, issue_description, severity, action_points, status } = req.body;
 
-    const result = db.prepare(`
-      INSERT INTO quality_reviews (sample_id, reviewer_id, issue_type, issue_description, severity, action_points, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(sample_id, reviewer_id, issue_type, issue_description, severity, action_points, status || 'Pending Review');
+    const { data: review, error } = await supabase
+      .from('quality_reviews')
+      .insert({
+        sample_id,
+        reviewer_id,
+        issue_type,
+        issue_description,
+        severity,
+        action_points,
+        status: status || 'Pending Review'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
 
     // Update sample status if needed
-    db.prepare(`
-      UPDATE samples SET status = 'Review Needed', updated_at = CURRENT_TIMESTAMP WHERE id = ?
-    `).run(sample_id);
+    await supabase
+      .from('samples')
+      .update({ status: 'Review Needed' })
+      .eq('id', sample_id);
 
     // Log audit trail
-    db.prepare(`
-      INSERT INTO audit_trail (entity_type, entity_id, action, user_id, changes)
-      VALUES ('quality_review', ?, 'created', ?, ?)
-    `).run(result.lastInsertRowid, reviewer_id, `Quality review created: ${issue_type}`);
+    await supabase
+      .from('audit_trail')
+      .insert({
+        entity_type: 'quality_review',
+        entity_id: review.id,
+        action: 'created',
+        user_id: reviewer_id,
+        changes: `Quality review created: ${issue_type}`
+      });
 
-    const review = db.prepare('SELECT * FROM quality_reviews WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json(review);
   } catch (error) {
+    console.error('Error creating quality review:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -179,29 +216,48 @@ router.post('/', (req, res) => {
  * PUT /api/quality-reviews/:id
  * Update quality review
  */
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const { issue_type, issue_description, severity, action_points, status, user_id } = req.body;
 
-    const oldReview = db.prepare('SELECT * FROM quality_reviews WHERE id = ?').get(req.params.id);
+    // Get old review for audit trail
+    const { data: oldReview } = await supabase
+      .from('quality_reviews')
+      .select('status')
+      .eq('id', req.params.id)
+      .single();
 
-    db.prepare(`
-      UPDATE quality_reviews 
-      SET issue_type = ?, issue_description = ?, severity = ?, action_points = ?, status = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(issue_type, issue_description, severity, action_points, status, req.params.id);
+    const { data: review, error } = await supabase
+      .from('quality_reviews')
+      .update({
+        issue_type,
+        issue_description,
+        severity,
+        action_points,
+        status
+      })
+      .eq('id', req.params.id)
+      .select()
+      .single();
+
+    if (error) throw error;
 
     // Log status change
-    if (oldReview.status !== status && user_id) {
-      db.prepare(`
-        INSERT INTO audit_trail (entity_type, entity_id, action, user_id, changes)
-        VALUES ('quality_review', ?, 'status_changed', ?, ?)
-      `).run(req.params.id, user_id, `Status changed from "${oldReview.status}" to "${status}"`);
+    if (oldReview && oldReview.status !== status && user_id) {
+      await supabase
+        .from('audit_trail')
+        .insert({
+          entity_type: 'quality_review',
+          entity_id: req.params.id,
+          action: 'status_changed',
+          user_id,
+          changes: `Status changed from "${oldReview.status}" to "${status}"`
+        });
     }
 
-    const review = db.prepare('SELECT * FROM quality_reviews WHERE id = ?').get(req.params.id);
     res.json(review);
   } catch (error) {
+    console.error('Error updating quality review:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -210,20 +266,33 @@ router.put('/:id', (req, res) => {
  * DELETE /api/quality-reviews/:id
  * Delete quality review
  */
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     // Delete associated photos from filesystem
-    const photos = db.prepare('SELECT file_path FROM quality_review_photos WHERE quality_review_id = ?').all(req.params.id);
-    photos.forEach(photo => {
-      const fullPath = path.join(__dirname, '../../../', photo.file_path);
-      if (fs.existsSync(fullPath)) {
-        fs.unlinkSync(fullPath);
-      }
-    });
+    const { data: photos } = await supabase
+      .from('quality_review_photos')
+      .select('file_path')
+      .eq('quality_review_id', req.params.id);
 
-    db.prepare('DELETE FROM quality_reviews WHERE id = ?').run(req.params.id);
+    if (photos) {
+      photos.forEach(photo => {
+        const fullPath = path.join(__dirname, '../../../', photo.file_path);
+        if (fs.existsSync(fullPath)) {
+          fs.unlinkSync(fullPath);
+        }
+      });
+    }
+
+    const { error } = await supabase
+      .from('quality_reviews')
+      .delete()
+      .eq('id', req.params.id);
+
+    if (error) throw error;
+
     res.json({ message: 'Quality review deleted successfully' });
   } catch (error) {
+    console.error('Error deleting quality review:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -232,28 +301,32 @@ router.delete('/:id', (req, res) => {
  * POST /api/quality-reviews/:id/photos
  * Upload photos for quality review
  */
-router.post('/:id/photos', upload.array('photos', 10), (req, res) => {
+router.post('/:id/photos', upload.array('photos', 10), async (req, res) => {
   try {
     const reviewId = req.params.id;
     const uploadedPhotos = [];
 
-    req.files.forEach(file => {
+    for (const file of req.files) {
       const relativePath = `uploads/quality-reviews/${file.filename}`;
       
-      const result = db.prepare(`
-        INSERT INTO quality_review_photos (quality_review_id, file_path, file_name)
-        VALUES (?, ?, ?)
-      `).run(reviewId, relativePath, file.originalname);
+      const { data, error } = await supabase
+        .from('quality_review_photos')
+        .insert({
+          quality_review_id: reviewId,
+          file_path: relativePath,
+          file_name: file.originalname
+        })
+        .select()
+        .single();
 
-      uploadedPhotos.push({
-        id: result.lastInsertRowid,
-        file_path: relativePath,
-        file_name: file.originalname
-      });
-    });
+      if (error) throw error;
+
+      uploadedPhotos.push(data);
+    }
 
     res.status(201).json(uploadedPhotos);
   } catch (error) {
+    console.error('Error uploading photos:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -262,9 +335,13 @@ router.post('/:id/photos', upload.array('photos', 10), (req, res) => {
  * DELETE /api/quality-reviews/:reviewId/photos/:photoId
  * Delete a photo
  */
-router.delete('/:reviewId/photos/:photoId', (req, res) => {
+router.delete('/:reviewId/photos/:photoId', async (req, res) => {
   try {
-    const photo = db.prepare('SELECT file_path FROM quality_review_photos WHERE id = ?').get(req.params.photoId);
+    const { data: photo } = await supabase
+      .from('quality_review_photos')
+      .select('file_path')
+      .eq('id', req.params.photoId)
+      .single();
     
     if (photo) {
       const fullPath = path.join(__dirname, '../../../', photo.file_path);
@@ -273,9 +350,16 @@ router.delete('/:reviewId/photos/:photoId', (req, res) => {
       }
     }
 
-    db.prepare('DELETE FROM quality_review_photos WHERE id = ?').run(req.params.photoId);
+    const { error } = await supabase
+      .from('quality_review_photos')
+      .delete()
+      .eq('id', req.params.photoId);
+
+    if (error) throw error;
+
     res.json({ message: 'Photo deleted successfully' });
   } catch (error) {
+    console.error('Error deleting photo:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -284,27 +368,37 @@ router.delete('/:reviewId/photos/:photoId', (req, res) => {
  * POST /api/quality-reviews/:id/comments
  * Add comment to quality review
  */
-router.post('/:id/comments', (req, res) => {
+router.post('/:id/comments', async (req, res) => {
   try {
     const { user_id, comment } = req.body;
 
-    const result = db.prepare(`
-      INSERT INTO quality_review_comments (quality_review_id, user_id, comment)
-      VALUES (?, ?, ?)
-    `).run(req.params.id, user_id, comment);
+    const { data: newComment, error } = await supabase
+      .from('quality_review_comments')
+      .insert({
+        quality_review_id: req.params.id,
+        user_id,
+        comment
+      })
+      .select(`
+        *,
+        user:users(first_name, last_name, email)
+      `)
+      .single();
 
-    const newComment = db.prepare(`
-      SELECT 
-        qrc.*,
-        (u.first_name || ' ' || u.last_name) as user_name,
-        u.email as user_email
-      FROM quality_review_comments qrc
-      LEFT JOIN users u ON qrc.user_id = u.id
-      WHERE qrc.id = ?
-    `).get(result.lastInsertRowid);
+    if (error) throw error;
 
-    res.status(201).json(newComment);
+    // Transform data
+    const transformedComment = {
+      ...newComment,
+      user_name: newComment.user 
+        ? `${newComment.user.first_name} ${newComment.user.last_name}` 
+        : null,
+      user_email: newComment.user?.email
+    };
+
+    res.status(201).json(transformedComment);
   } catch (error) {
+    console.error('Error adding comment:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -313,20 +407,27 @@ router.post('/:id/comments', (req, res) => {
  * GET /api/quality-reviews/stats/overview
  * Get overview statistics for quality reviews
  */
-router.get('/stats/overview', (req, res) => {
+router.get('/stats/overview', async (req, res) => {
   try {
+    const { data: allReviews, error } = await supabase
+      .from('quality_reviews')
+      .select('status, severity');
+
+    if (error) throw error;
+
     const stats = {
-      total_reviews: db.prepare('SELECT COUNT(*) as count FROM quality_reviews').get().count,
-      pending_review: db.prepare('SELECT COUNT(*) as count FROM quality_reviews WHERE status = "Pending Review"').get().count,
-      changes_requested: db.prepare('SELECT COUNT(*) as count FROM quality_reviews WHERE status = "Changes Requested"').get().count,
-      approved: db.prepare('SELECT COUNT(*) as count FROM quality_reviews WHERE status = "Approved"').get().count,
-      high_severity: db.prepare('SELECT COUNT(*) as count FROM quality_reviews WHERE severity = "High"').get().count,
-      medium_severity: db.prepare('SELECT COUNT(*) as count FROM quality_reviews WHERE severity = "Medium"').get().count,
-      low_severity: db.prepare('SELECT COUNT(*) as count FROM quality_reviews WHERE severity = "Low"').get().count
+      total_reviews: allReviews.length,
+      pending_review: allReviews.filter(r => r.status === 'Pending Review').length,
+      changes_requested: allReviews.filter(r => r.status === 'Changes Requested').length,
+      approved: allReviews.filter(r => r.status === 'Approved').length,
+      high_severity: allReviews.filter(r => r.severity === 'High').length,
+      medium_severity: allReviews.filter(r => r.severity === 'Medium').length,
+      low_severity: allReviews.filter(r => r.severity === 'Low').length
     };
 
     res.json(stats);
   } catch (error) {
+    console.error('Error getting quality review stats:', error);
     res.status(500).json({ error: error.message });
   }
 });

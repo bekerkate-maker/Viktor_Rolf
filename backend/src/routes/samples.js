@@ -1,5 +1,5 @@
 import express from 'express';
-import db from '../database/connection.js';
+import { supabase } from '../database/supabase.js';
 
 const router = express.Router();
 
@@ -7,43 +7,50 @@ const router = express.Router();
  * GET /api/samples
  * Get all samples with optional filters
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { collection_id, status } = req.query;
     
-    let query = `
-      SELECT 
-        s.*,
-        c.name as collection_name,
-        c.season,
-        c.year,
-        (u.first_name || ' ' || u.last_name) as responsible_user_name,
-        COUNT(DISTINCT qr.id) as quality_review_count,
-        COUNT(DISTINCT sc.id) as supplier_comm_count
-      FROM samples s
-      LEFT JOIN collections c ON s.collection_id = c.id
-      LEFT JOIN users u ON s.responsible_user_id = u.id
-      LEFT JOIN quality_reviews qr ON s.id = qr.sample_id
-      LEFT JOIN supplier_communications sc ON s.id = sc.sample_id
-      WHERE 1=1
-    `;
+    let query = supabase
+      .from('samples')
+      .select(`
+        *,
+        collection:collections(name, season, year, category),
+        responsible_user:users!responsible_user_id(first_name, last_name, email),
+        quality_reviews(id),
+        supplier_communications(id)
+      `);
 
-    const params = [];
-    
     if (collection_id) {
-      query += ' AND s.collection_id = ?';
-      params.push(collection_id);
+      query = query.eq('collection_id', collection_id);
     }
     
     if (status) {
-      query += ' AND s.status = ?';
-      params.push(status);
+      query = query.eq('status', status);
     }
 
-    query += ' GROUP BY s.id ORDER BY s.updated_at DESC';
+  // Sorteer op sample_code oplopend zodat 1 bovenaan staat
+  query = query.order('sample_code', { ascending: true });
 
-    const samples = db.prepare(query).all(...params);
-    res.json(samples);
+    const { data: samples, error } = await query;
+
+    if (error) throw error;
+
+    // Transform data to match old structure
+    const transformedSamples = samples.map(s => ({
+      ...s,
+      collection_name: s.collection?.name,
+      season: s.collection?.season,
+      year: s.collection?.year,
+      collection_type: s.collection?.category,
+      responsible_user_name: s.responsible_user 
+        ? `${s.responsible_user.first_name} ${s.responsible_user.last_name}` 
+        : null,
+      quality_review_count: s.quality_reviews?.length || 0,
+      supplier_comm_count: s.supplier_communications?.length || 0
+    }));
+
+    res.json(transformedSamples);
   } catch (error) {
     console.error('Error loading samples:', error);
     res.status(500).json({ error: error.message });
@@ -54,67 +61,98 @@ router.get('/', (req, res) => {
  * GET /api/samples/:id
  * Get single sample with full details
  */
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const sample = db.prepare(`
-      SELECT 
-        s.*,
-        c.name as collection_name,
-        c.season,
-        c.year,
-        c.type as collection_type,
-        (u.first_name || ' ' || u.last_name) as responsible_user_name,
-        u.email as responsible_user_email
-      FROM samples s
-      LEFT JOIN collections c ON s.collection_id = c.id
-      LEFT JOIN users u ON s.responsible_user_id = u.id
-      WHERE s.id = ?
-    `).get(req.params.id);
+    // Get sample with related data
+    const { data: sample, error } = await supabase
+      .from('samples')
+      .select(`
+        *,
+        collection:collections(name, season, year, category),
+        responsible_user:users!responsible_user_id(first_name, last_name, email)
+      `)
+      .eq('id', req.params.id)
+      .single();
 
-    if (!sample) {
-      return res.status(404).json({ error: 'Sample not found' });
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Sample not found' });
+      }
+      throw error;
     }
 
     // Get quality reviews
-    const qualityReviews = db.prepare(`
-      SELECT 
-        qr.*,
-        (u.first_name || ' ' || u.last_name) as reviewer_name,
-        u.email as reviewer_email
-      FROM quality_reviews qr
-      LEFT JOIN users u ON qr.reviewer_id = u.id
-      WHERE qr.sample_id = ?
-      ORDER BY qr.created_at DESC
-    `).all(req.params.id);
+    const { data: qualityReviews, error: qrError } = await supabase
+      .from('quality_reviews')
+      .select(`
+        *,
+        reviewer:users!reviewer_id(first_name, last_name, email)
+      `)
+      .eq('sample_id', req.params.id)
+      .order('created_at', { ascending: false });
+
+    if (qrError) throw qrError;
 
     // Get supplier communications
-    const supplierComms = db.prepare(`
-      SELECT 
-        sc.*,
-        (u.first_name || ' ' || u.last_name) as created_by_name
-      FROM supplier_communications sc
-      LEFT JOIN users u ON sc.created_by = u.id
-      WHERE sc.sample_id = ?
-      ORDER BY sc.communication_date DESC
-    `).all(req.params.id);
+    const { data: supplierComms, error: scError } = await supabase
+      .from('supplier_communications')
+      .select(`
+        *,
+        created_by_user:users!created_by(first_name, last_name)
+      `)
+      .eq('sample_id', req.params.id)
+      .order('communication_date', { ascending: false });
+
+    if (scError) throw scError;
 
     // Get audit trail
-    const auditTrail = db.prepare(`
-      SELECT 
-        at.*,
-        (u.first_name || ' ' || u.last_name) as user_name
-      FROM audit_trail at
-      LEFT JOIN users u ON at.user_id = u.id
-      WHERE at.entity_type = 'sample' AND at.entity_id = ?
-      ORDER BY at.created_at DESC
-    `).all(req.params.id);
+    const { data: auditTrail, error: atError } = await supabase
+      .from('audit_trail')
+      .select(`
+        *,
+        user:users(first_name, last_name)
+      `)
+      .eq('entity_type', 'sample')
+      .eq('entity_id', req.params.id)
+      .order('created_at', { ascending: false });
 
-    sample.quality_reviews = qualityReviews;
-    sample.supplier_communications = supplierComms;
-    sample.audit_trail = auditTrail;
+    if (atError) throw atError;
 
-    res.json(sample);
+    // Transform data to match old structure
+    const transformedSample = {
+      ...sample,
+      collection_name: sample.collection?.name,
+      season: sample.collection?.season,
+      year: sample.collection?.year,
+      collection_type: sample.collection?.category,
+      responsible_user_name: sample.responsible_user 
+        ? `${sample.responsible_user.first_name} ${sample.responsible_user.last_name}` 
+        : null,
+      responsible_user_email: sample.responsible_user?.email,
+      quality_reviews: qualityReviews.map(qr => ({
+        ...qr,
+        reviewer_name: qr.reviewer 
+          ? `${qr.reviewer.first_name} ${qr.reviewer.last_name}` 
+          : null,
+        reviewer_email: qr.reviewer?.email
+      })),
+      supplier_communications: supplierComms.map(sc => ({
+        ...sc,
+        created_by_name: sc.created_by_user 
+          ? `${sc.created_by_user.first_name} ${sc.created_by_user.last_name}` 
+          : null
+      })),
+      audit_trail: auditTrail.map(at => ({
+        ...at,
+        user_name: at.user 
+          ? `${at.user.first_name} ${at.user.last_name}` 
+          : null
+      }))
+    };
+
+    res.json(transformedSample);
   } catch (error) {
+    console.error('Error loading sample:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -123,7 +161,7 @@ router.get('/:id', (req, res) => {
  * POST /api/samples
  * Create new sample
  */
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { 
       collection_id, 
@@ -147,46 +185,40 @@ router.post('/', (req, res) => {
       name
     });
 
-    const result = db.prepare(`
-      INSERT INTO samples (
+    const { data: sample, error } = await supabase
+      .from('samples')
+      .insert({
         collection_id, 
         sample_code, 
         name, 
-        sample_round,
-        product_type,
-        supplier_name,
-        status, 
+        sample_round: sample_round || 'Proto',
+        product_type: product_type || 'Other',
+        supplier_name: supplier_name || '',
+        status: status || 'In Review', 
         responsible_user_id,
-        received_date,
-        feedback_deadline,
-        internal_notes,
-        tags
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      collection_id, 
-      sample_code, 
-      name, 
-      sample_round || 'Proto',
-      product_type || 'Other',
-      supplier_name || '',
-      status || 'In Review', 
-      responsible_user_id,
-      received_date || null,
-      feedback_deadline || null,
-      internal_notes || '',
-      tags || ''
-    );
+        received_date: received_date || null,
+        feedback_deadline: feedback_deadline || null,
+        internal_notes: internal_notes || '',
+        tags: tags || ''
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
 
     // Log audit trail
     if (responsible_user_id) {
-      db.prepare(`
-        INSERT INTO audit_trail (entity_type, entity_id, action, user_id, changes)
-        VALUES ('sample', ?, 'created', ?, ?)
-      `).run(result.lastInsertRowid, responsible_user_id, `Sample ${sample_code} created`);
+      await supabase
+        .from('audit_trail')
+        .insert({
+          entity_type: 'sample',
+          entity_id: sample.id,
+          action: 'created',
+          user_id: responsible_user_id,
+          changes: `Sample ${sample_code} created`
+        });
     }
 
-    const sample = db.prepare('SELECT * FROM samples WHERE id = ?').get(result.lastInsertRowid);
     console.log('Sample created successfully:', sample.id);
     res.status(201).json(sample);
   } catch (error) {
@@ -199,7 +231,7 @@ router.post('/', (req, res) => {
  * PUT /api/samples/:id
  * Update sample
  */
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const { 
       name, 
@@ -215,54 +247,52 @@ router.put('/:id', (req, res) => {
       user_id 
     } = req.body;
     
-    const oldSample = db.prepare('SELECT * FROM samples WHERE id = ?').get(req.params.id);
+    // Get old sample for audit trail
+    const { data: oldSample, error: fetchError } = await supabase
+      .from('samples')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
     
-    if (!oldSample) {
+    if (fetchError || !oldSample) {
       return res.status(404).json({ error: 'Sample not found' });
     }
 
-    db.prepare(`
-      UPDATE samples 
-      SET 
-        name = ?,
-        sample_round = ?,
-        product_type = ?,
-        supplier_name = ?,
-        status = ?,
-        responsible_user_id = ?,
-        received_date = ?,
-        feedback_deadline = ?,
-        internal_notes = ?,
-        tags = ?,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(
-      name || oldSample.name,
-      sample_round || oldSample.sample_round,
-      product_type || oldSample.product_type,
-      supplier_name !== undefined ? supplier_name : oldSample.supplier_name,
-      status || oldSample.status,
-      responsible_user_id || oldSample.responsible_user_id,
-      received_date !== undefined ? received_date : oldSample.received_date,
-      feedback_deadline !== undefined ? feedback_deadline : oldSample.feedback_deadline,
-      internal_notes !== undefined ? internal_notes : oldSample.internal_notes,
-      tags !== undefined ? tags : oldSample.tags,
-      req.params.id
-    );
+    // Update sample
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (sample_round !== undefined) updateData.sample_round = sample_round;
+    if (product_type !== undefined) updateData.product_type = product_type;
+    if (supplier_name !== undefined) updateData.supplier_name = supplier_name;
+    if (status !== undefined) updateData.status = status;
+    if (responsible_user_id !== undefined) updateData.responsible_user_id = responsible_user_id;
+    if (received_date !== undefined) updateData.received_date = received_date;
+    if (feedback_deadline !== undefined) updateData.feedback_deadline = feedback_deadline;
+    if (internal_notes !== undefined) updateData.internal_notes = internal_notes;
+    if (tags !== undefined) updateData.tags = tags;
+
+    const { data: sample, error: updateError } = await supabase
+      .from('samples')
+      .update(updateData)
+      .eq('id', req.params.id)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
 
     // Log status change in audit trail
     if (oldSample.status !== status && (user_id || responsible_user_id)) {
-      db.prepare(`
-        INSERT INTO audit_trail (entity_type, entity_id, action, user_id, changes)
-        VALUES ('sample', ?, 'status_changed', ?, ?)
-      `).run(
-        req.params.id, 
-        user_id || responsible_user_id, 
-        `Status changed from "${oldSample.status}" to "${status}"`
-      );
+      await supabase
+        .from('audit_trail')
+        .insert({
+          entity_type: 'sample',
+          entity_id: req.params.id,
+          action: 'status_changed',
+          user_id: user_id || responsible_user_id,
+          changes: `Status changed from "${oldSample.status}" to "${status}"`
+        });
     }
 
-    const sample = db.prepare('SELECT * FROM samples WHERE id = ?').get(req.params.id);
     console.log('Sample updated successfully:', sample.id);
     res.json(sample);
   } catch (error) {
@@ -275,11 +305,18 @@ router.put('/:id', (req, res) => {
  * DELETE /api/samples/:id
  * Delete sample
  */
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    db.prepare('DELETE FROM samples WHERE id = ?').run(req.params.id);
+    const { error } = await supabase
+      .from('samples')
+      .delete()
+      .eq('id', req.params.id);
+
+    if (error) throw error;
+
     res.json({ message: 'Sample deleted successfully' });
   } catch (error) {
+    console.error('Error deleting sample:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -288,27 +325,62 @@ router.delete('/:id', (req, res) => {
  * GET /api/samples/:id/audit-trail
  * Get audit trail for a sample
  */
-router.get('/:id/audit-trail', (req, res) => {
+router.get('/:id/audit-trail', async (req, res) => {
   try {
-    const auditTrail = db.prepare(`
-      SELECT 
-        at.*,
-        (u.first_name || ' ' || u.last_name) as user_name,
-        u.email as user_email
-      FROM audit_trail at
-      LEFT JOIN users u ON at.user_id = u.id
-      WHERE (at.entity_type = 'sample' AND at.entity_id = ?)
-         OR (at.entity_type = 'quality_review' AND at.entity_id IN (
-           SELECT id FROM quality_reviews WHERE sample_id = ?
-         ))
-         OR (at.entity_type = 'supplier_communication' AND at.entity_id IN (
-           SELECT id FROM supplier_communications WHERE sample_id = ?
-         ))
-      ORDER BY at.created_at DESC
-    `).all(req.params.id, req.params.id, req.params.id);
+    // Get quality review IDs for this sample
+    const { data: qualityReviews } = await supabase
+      .from('quality_reviews')
+      .select('id')
+      .eq('sample_id', req.params.id);
 
-    res.json(auditTrail);
+    const qualityReviewIds = qualityReviews?.map(qr => qr.id) || [];
+
+    // Get supplier communication IDs for this sample
+    const { data: supplierComms } = await supabase
+      .from('supplier_communications')
+      .select('id')
+      .eq('sample_id', req.params.id);
+
+    const supplierCommIds = supplierComms?.map(sc => sc.id) || [];
+
+    // Get audit trail entries
+    let query = supabase
+      .from('audit_trail')
+      .select(`
+        *,
+        user:users(first_name, last_name, email)
+      `);
+
+    // Build OR filter for all related entities
+    const orFilters = [`and(entity_type.eq.sample,entity_id.eq.${req.params.id})`];
+    
+    if (qualityReviewIds.length > 0) {
+      orFilters.push(`and(entity_type.eq.quality_review,entity_id.in.(${qualityReviewIds.join(',')}))`);
+    }
+    
+    if (supplierCommIds.length > 0) {
+      orFilters.push(`and(entity_type.eq.supplier_communication,entity_id.in.(${supplierCommIds.join(',')}))`);
+    }
+
+    query = query.or(orFilters.join(','));
+    query = query.order('created_at', { ascending: false });
+
+    const { data: auditTrail, error } = await query;
+
+    if (error) throw error;
+
+    // Transform data
+    const transformedAuditTrail = auditTrail.map(at => ({
+      ...at,
+      user_name: at.user 
+        ? `${at.user.first_name} ${at.user.last_name}` 
+        : null,
+      user_email: at.user?.email
+    }));
+
+    res.json(transformedAuditTrail);
   } catch (error) {
+    console.error('Error loading audit trail:', error);
     res.status(500).json({ error: error.message });
   }
 });

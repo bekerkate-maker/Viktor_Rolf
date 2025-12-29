@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import db from '../database/connection.js';
+import { supabase } from '../database/supabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,46 +47,49 @@ const upload = multer({
  * GET /api/supplier-communications
  * Get all supplier communications with optional filters
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { sample_id, status, supplier_name } = req.query;
     
-    let query = `
-      SELECT 
-        sc.*,
-        s.sample_code,
-        s.name as sample_name,
-        c.name as collection_name,
-        (u.first_name || ' ' || u.last_name) as created_by_name
-      FROM supplier_communications sc
-      LEFT JOIN samples s ON sc.sample_id = s.id
-      LEFT JOIN collections c ON s.collection_id = c.id
-      LEFT JOIN users u ON sc.created_by = u.id
-      WHERE 1=1
-    `;
+    let query = supabase
+      .from('supplier_communications')
+      .select(`
+        *,
+        sample:samples(sample_code, name, collection:collections(name)),
+        created_by_user:users!created_by(first_name, last_name)
+      `);
 
-    const params = [];
-    
     if (sample_id) {
-      query += ' AND sc.sample_id = ?';
-      params.push(sample_id);
+      query = query.eq('sample_id', sample_id);
     }
     
     if (status) {
-      query += ' AND sc.status = ?';
-      params.push(status);
+      query = query.eq('status', status);
     }
 
     if (supplier_name) {
-      query += ' AND sc.supplier_name LIKE ?';
-      params.push(`%${supplier_name}%`);
+      query = query.ilike('supplier_name', `%${supplier_name}%`);
     }
 
-    query += ' ORDER BY sc.communication_date DESC';
+    query = query.order('communication_date', { ascending: false });
 
-    const communications = db.prepare(query).all(...params);
-    res.json(communications);
+    const { data: communications, error } = await query;
+    if (error) throw error;
+
+    // Transform data
+    const transformedComms = communications.map(sc => ({
+      ...sc,
+      sample_code: sc.sample?.sample_code,
+      sample_name: sc.sample?.name,
+      collection_name: sc.sample?.collection?.name,
+      created_by_name: sc.created_by_user 
+        ? `${sc.created_by_user.first_name} ${sc.created_by_user.last_name}` 
+        : null
+    }));
+
+    res.json(transformedComms);
   } catch (error) {
+    console.error('Error loading supplier communications:', error);
     res.status(500).json({ error: error.message });
   }
 });

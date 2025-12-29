@@ -29,15 +29,15 @@ export const collectionsAPI = {
 
 // Samples
 export const samplesAPI = {
-  getAll: (params?: { collection_id?: number; status?: string }) =>
+  getAll: (params?: { collection_id?: string; status?: string }) =>
     api.get<Sample[]>('/samples', { params }),
-  getByCollection: (collectionId: number) =>
+  getByCollection: (collectionId: string) =>
     api.get<Sample[]>(`/samples?collection_id=${collectionId}`),
-  getById: (id: number) => api.get<Sample>(`/samples/${id}`),
+  getById: (id: string) => api.get<Sample>(`/samples/${id}`),
   create: (data: Partial<Sample>) => api.post<Sample>('/samples', data),
-  update: (id: number, data: Partial<Sample>) => api.put<Sample>(`/samples/${id}`, data),
-  delete: (id: number) => api.delete(`/samples/${id}`),
-  getAuditTrail: (id: number) => api.get(`/samples/${id}/audit-trail`),
+  update: (id: string, data: Partial<Sample>) => api.put<Sample>(`/samples/${id}`, data),
+  delete: (id: string) => api.delete(`/samples/${id}`),
+  getAuditTrail: (id: string) => api.get(`/samples/${id}/audit-trail`),
 };
 
 // Quality Reviews
@@ -98,14 +98,21 @@ export const usersAPI = {
 
 // Sample Photos
 export const photosAPI = {
-  uploadPhotos: (sampleId: number, files: File[]) => {
+  uploadPhotos: (sampleId: string, files: File[]) => {
     const formData = new FormData();
     files.forEach((file) => formData.append('photos', file));
+    // Haal JWT-token uit localStorage
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const token = user?.token;
     return api.post(`/photos/samples/${sampleId}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     });
   },
-  getPhotos: (sampleId: number) => api.get(`/photos/samples/${sampleId}`),
+  getPhotos: (sampleId: string) => api.get(`/photos/samples/${sampleId}`),
   setMainPhoto: (photoId: number) => api.put(`/photos/${photoId}/set-main`),
   updateOrder: (photoId: number, display_order: number) => 
     api.put(`/photos/${photoId}/order`, { display_order }),

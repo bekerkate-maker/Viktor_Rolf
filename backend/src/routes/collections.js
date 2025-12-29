@@ -1,5 +1,5 @@
 import express from 'express';
-import db from '../database/connection.js';
+import { supabase } from '../database/supabase.js';
 
 const router = express.Router();
 
@@ -7,24 +7,32 @@ const router = express.Router();
  * GET /api/collections
  * Get all collections with sample counts
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const collections = db.prepare(`
-      SELECT 
-        c.*,
-        COUNT(DISTINCT s.id) as sample_count,
-        SUM(CASE WHEN s.status = 'In Review' THEN 1 ELSE 0 END) as in_review_count,
-        SUM(CASE WHEN s.status = 'Changes Needed' THEN 1 ELSE 0 END) as changes_needed_count,
-        SUM(CASE WHEN s.status = 'Approved' THEN 1 ELSE 0 END) as approved_count,
-        SUM(CASE WHEN s.status = 'Rejected' THEN 1 ELSE 0 END) as rejected_count
-      FROM collections c
-      LEFT JOIN samples s ON c.id = s.collection_id
-      GROUP BY c.id
-      ORDER BY c.year DESC, c.season DESC
-    `).all();
+    const { data: collections, error } = await supabase
+      .from('collections')
+      .select(`
+        *,
+        samples(id, status)
+      `)
+      .order('year', { ascending: false })
+      .order('season', { ascending: false });
 
-    res.json(collections);
+    if (error) throw error;
+
+    // Calculate counts for each collection
+    const collectionsWithCounts = collections.map(c => ({
+      ...c,
+      sample_count: c.samples?.length || 0,
+      in_review_count: c.samples?.filter(s => s.status === 'In Review').length || 0,
+      changes_needed_count: c.samples?.filter(s => s.status === 'Changes Needed').length || 0,
+      approved_count: c.samples?.filter(s => s.status === 'Approved').length || 0,
+      rejected_count: c.samples?.filter(s => s.status === 'Rejected').length || 0
+    }));
+
+    res.json(collectionsWithCounts);
   } catch (error) {
+    console.error('Error loading collections:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -33,33 +41,46 @@ router.get('/', (req, res) => {
  * GET /api/collections/:id
  * Get single collection with details
  */
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const collection = db.prepare(`
-      SELECT * FROM collections WHERE id = ?
-    `).get(req.params.id);
+    const { data: collection, error } = await supabase
+      .from('collections')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
 
-    if (!collection) {
-      return res.status(404).json({ error: 'Collection not found' });
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Collection not found' });
+      }
+      throw error;
     }
 
     // Get samples for this collection
-    const samples = db.prepare(`
-      SELECT 
-        s.*,
-        (u.first_name || ' ' || u.last_name) as responsible_user_name,
-        COUNT(DISTINCT qr.id) as quality_review_count
-      FROM samples s
-      LEFT JOIN users u ON s.responsible_user_id = u.id
-      LEFT JOIN quality_reviews qr ON s.id = qr.sample_id
-      WHERE s.collection_id = ?
-      GROUP BY s.id
-      ORDER BY s.sample_code
-    `).all(req.params.id);
+    const { data: samples, error: samplesError } = await supabase
+      .from('samples')
+      .select(`
+        *,
+        responsible_user:users!responsible_user_id(first_name, last_name),
+        quality_reviews(id)
+      `)
+      .eq('collection_id', req.params.id)
+      .order('sample_code');
 
-    collection.samples = samples;
+    if (samplesError) throw samplesError;
+
+    // Transform samples
+    collection.samples = samples.map(s => ({
+      ...s,
+      responsible_user_name: s.responsible_user 
+        ? `${s.responsible_user.first_name} ${s.responsible_user.last_name}` 
+        : null,
+      quality_review_count: s.quality_reviews?.length || 0
+    }));
+
     res.json(collection);
   } catch (error) {
+    console.error('Error loading collection:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -68,18 +89,21 @@ router.get('/:id', (req, res) => {
  * POST /api/collections
  * Create new collection
  */
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { name, season, year, type } = req.body;
 
-    const result = db.prepare(`
-      INSERT INTO collections (name, season, year, type)
-      VALUES (?, ?, ?, ?)
-    `).run(name, season, year, type);
+    const { data: collection, error } = await supabase
+      .from('collections')
+      .insert({ name, season, year, type })
+      .select()
+      .single();
 
-    const collection = db.prepare('SELECT * FROM collections WHERE id = ?').get(result.lastInsertRowid);
+    if (error) throw error;
+
     res.status(201).json(collection);
   } catch (error) {
+    console.error('Error creating collection:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -88,19 +112,22 @@ router.post('/', (req, res) => {
  * PUT /api/collections/:id
  * Update collection
  */
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const { name, season, year, type, status } = req.body;
 
-    db.prepare(`
-      UPDATE collections 
-      SET name = ?, season = ?, year = ?, type = ?, status = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(name, season, year, type, status, req.params.id);
+    const { data: collection, error } = await supabase
+      .from('collections')
+      .update({ name, season, year, type, status })
+      .eq('id', req.params.id)
+      .select()
+      .single();
 
-    const collection = db.prepare('SELECT * FROM collections WHERE id = ?').get(req.params.id);
+    if (error) throw error;
+
     res.json(collection);
   } catch (error) {
+    console.error('Error updating collection:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -109,11 +136,18 @@ router.put('/:id', (req, res) => {
  * DELETE /api/collections/:id
  * Delete collection (and cascade samples)
  */
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    db.prepare('DELETE FROM collections WHERE id = ?').run(req.params.id);
+    const { error } = await supabase
+      .from('collections')
+      .delete()
+      .eq('id', req.params.id);
+
+    if (error) throw error;
+
     res.json({ message: 'Collection deleted successfully' });
   } catch (error) {
+    console.error('Error deleting collection:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -25,7 +25,8 @@ function App() {
         <Route path="/home" element={<Layout><Home /></Layout>} />
         <Route path="/collections" element={<Layout><Collections /></Layout>} />
         <Route path="/collections/:id" element={<Layout><CollectionDetail /></Layout>} />
-        <Route path="/samples/:id" element={<Layout><SampleDetail /></Layout>} />
+  <Route path="/samples/:id" element={<Layout><SampleDetail /></Layout>} />
+  <Route path="/collections/:collectionId/samples/:id" element={<Layout><SampleDetail /></Layout>} />
         <Route path="/quality-control" element={<Layout><QualityControl /></Layout>} />
         <Route path="/quality-reviews/:id" element={<Layout><QualityReviewDetail /></Layout>} />
         <Route path="/supplier-communications" element={<Layout><SupplierCommunications /></Layout>} />

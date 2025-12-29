@@ -863,27 +863,32 @@
   flex: 1;
 }
 
+
 .add-button {
-  background: var(--vr-black);
-  color: var(--vr-white);
-  border: none;
-  width: 48px;
-  height: 48px;
-  border-radius: 4px;
-  font-size: 2rem;
-  font-weight: 300;
+  background: #fff;
+  color: var(--vr-black);
+  border: 1.5px solid #e0e0e0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 1.7rem;
+  font-weight: 400;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  transition: all 0.18s cubic-bezier(.4,0,.2,1);
   flex-shrink: 0;
   margin-top: 0;
 }
 
 .add-button:hover {
-  background: var(--vr-gold);
-  transform: scale(1.05);
+  background: #f7f7f7;
+  color: var(--vr-gold);
+  border-color: var(--vr-gold);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  transform: scale(1.08);
 }
 
 .section-title {
@@ -1279,7 +1284,7 @@
   padding: var(--spacing-lg) var(--spacing-xl);
   background: var(--vr-cream);
   border-bottom: 2px solid var(--vr-black);
-  font-size: 0.75rem;
+  font-size: 1rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -1329,14 +1334,14 @@
 }
 
 .sample-col-name {
-  font-size: 1.125rem;
-  font-weight: 500;
+  font-size: 1rem;
+  font-weight: 600;
   color: var(--vr-black);
 }
 
 .sample-col-round,
 .sample-col-type {
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: var(--vr-gray);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1345,6 +1350,8 @@
 .sample-col-status {
   display: flex;
   justify-content: flex-start;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .sample-col-actions {

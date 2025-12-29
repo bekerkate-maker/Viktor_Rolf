@@ -1,7 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import db from '../database/connection.js';
+import { supabase } from '../database/supabase.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'viktor-rolf-secret-key-change-in-production';
@@ -21,7 +21,12 @@ router.post('/register', async (req, res) => {
     }
 
     // Check if user already exists
-    const existingUser = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
+
     if (existingUser) {
       return res.status(400).json({ error: 'User with this email already exists' });
     }
@@ -31,16 +36,24 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Insert user
-    const stmt = db.prepare(`
-      INSERT INTO users (first_name, last_name, email, password, job_title, role)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-    
-    const result = stmt.run(first_name, last_name, email, hashedPassword, job_title, 'editor');
+    const { data: newUser, error } = await supabase
+      .from('users')
+      .insert({
+        first_name,
+        last_name,
+        email,
+        password: hashedPassword,
+        job_title,
+        role: 'editor'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: result.lastInsertRowid, email },
+      { userId: newUser.id, email },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -49,7 +62,7 @@ router.post('/register', async (req, res) => {
       message: 'User registered successfully',
       token,
       user: {
-        id: result.lastInsertRowid,
+        id: newUser.id,
         first_name,
         last_name,
         email,
@@ -59,7 +72,7 @@ router.post('/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ error: 'Server error during registration' });
+    res.status(500).json({ error: error.message || 'Server error during registration' });
   }
 });
 
@@ -78,8 +91,17 @@ router.post('/login', async (req, res) => {
     }
 
     // Find user
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-    if (!user) {
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
+
+    if (error || !user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    if (!user.password) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -119,14 +141,15 @@ router.post('/login', async (req, res) => {
  * @desc    Get current user
  * @access  Private
  */
-router.get('/me', verifyToken, (req, res) => {
+router.get('/me', verifyToken, async (req, res) => {
   try {
-    const user = db.prepare(`
-      SELECT id, first_name, last_name, email, job_title, role, created_at
-      FROM users WHERE id = ?
-    `).get(req.userId);
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, first_name, last_name, email, job_title, role, created_at')
+      .eq('id', req.userId)
+      .single();
 
-    if (!user) {
+    if (error || !user) {
       return res.status(404).json({ error: 'User not found' });
     }
 

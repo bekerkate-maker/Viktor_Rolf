@@ -251,7 +251,7 @@ function QualityControl() {
                   {searchResults.samples.slice(0, 12).map((sample) => (
                     <Link
                       key={sample.id}
-                      to={`/samples/${sample.id}`}
+                      to={`/collections/${sample.collection_id}/samples/${sample.id}`}
                       className="sample-card"
                     >
                       <div className="sample-card-header">
@@ -384,7 +384,7 @@ function QualityControl() {
               </div>
               {samples.map((sample) => (
                 <div key={sample.id} className="samples-table-row">
-                  <Link to={`/samples/${sample.id}`} className="sample-row-link">
+                  <Link to={`/collections/${sample.collection_id}/samples/${sample.id}`} className="sample-row-link">
                     <div className="sample-col-number">{sample.sample_code.split('-').pop()}</div>
                     <div className="sample-col-name">{sample.name}</div>
                     <div className="sample-col-round">{sample.sample_round}</div>

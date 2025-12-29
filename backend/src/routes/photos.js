@@ -86,7 +86,7 @@ router.post('/samples/:sampleId', verifyToken, upload.array('photos', 10), (req,
     res.status(201).json(photos);
   } catch (error) {
     console.error('Photo upload error:', error);
-    res.status(500).json({ error: 'Failed to upload photos' });
+    res.status(500).json({ error: error.message || 'Failed to upload photos' });
   }
 });
 
