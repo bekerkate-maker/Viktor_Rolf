@@ -63,7 +63,7 @@ router.get('/:id', (req, res) => {
         c.season,
         c.year,
         c.type as collection_type,
-        u.name as responsible_user_name,
+        (u.first_name || ' ' || u.last_name) as responsible_user_name,
         u.email as responsible_user_email
       FROM samples s
       LEFT JOIN collections c ON s.collection_id = c.id
@@ -79,7 +79,7 @@ router.get('/:id', (req, res) => {
     const qualityReviews = db.prepare(`
       SELECT 
         qr.*,
-        u.name as reviewer_name,
+        (u.first_name || ' ' || u.last_name) as reviewer_name,
         u.email as reviewer_email
       FROM quality_reviews qr
       LEFT JOIN users u ON qr.reviewer_id = u.id
@@ -91,7 +91,7 @@ router.get('/:id', (req, res) => {
     const supplierComms = db.prepare(`
       SELECT 
         sc.*,
-        u.name as created_by_name
+        (u.first_name || ' ' || u.last_name) as created_by_name
       FROM supplier_communications sc
       LEFT JOIN users u ON sc.created_by = u.id
       WHERE sc.sample_id = ?
@@ -102,7 +102,7 @@ router.get('/:id', (req, res) => {
     const auditTrail = db.prepare(`
       SELECT 
         at.*,
-        u.name as user_name
+        (u.first_name || ' ' || u.last_name) as user_name
       FROM audit_trail at
       LEFT JOIN users u ON at.user_id = u.id
       WHERE at.entity_type = 'sample' AND at.entity_id = ?
@@ -293,7 +293,7 @@ router.get('/:id/audit-trail', (req, res) => {
     const auditTrail = db.prepare(`
       SELECT 
         at.*,
-        u.name as user_name,
+        (u.first_name || ' ' || u.last_name) as user_name,
         u.email as user_email
       FROM audit_trail at
       LEFT JOIN users u ON at.user_id = u.id

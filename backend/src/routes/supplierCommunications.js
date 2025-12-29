@@ -57,7 +57,7 @@ router.get('/', (req, res) => {
         s.sample_code,
         s.name as sample_name,
         c.name as collection_name,
-        u.name as created_by_name
+        (u.first_name || ' ' || u.last_name) as created_by_name
       FROM supplier_communications sc
       LEFT JOIN samples s ON sc.sample_id = s.id
       LEFT JOIN collections c ON s.collection_id = c.id
@@ -105,7 +105,7 @@ router.get('/overdue', (req, res) => {
         s.sample_code,
         s.name as sample_name,
         c.name as collection_name,
-        u.name as created_by_name
+        (u.first_name || ' ' || u.last_name) as created_by_name
       FROM supplier_communications sc
       LEFT JOIN samples s ON sc.sample_id = s.id
       LEFT JOIN collections c ON s.collection_id = c.id
@@ -133,7 +133,7 @@ router.get('/important', (req, res) => {
         s.sample_code,
         s.name as sample_name,
         c.name as collection_name,
-        u.name as created_by_name
+        (u.first_name || ' ' || u.last_name) as created_by_name
       FROM supplier_communications sc
       LEFT JOIN samples s ON sc.sample_id = s.id
       LEFT JOIN collections c ON s.collection_id = c.id
@@ -160,7 +160,7 @@ router.get('/:id', (req, res) => {
         s.sample_code,
         s.name as sample_name,
         c.name as collection_name,
-        u.name as created_by_name,
+        (u.first_name || ' ' || u.last_name) as created_by_name,
         u.email as created_by_email
       FROM supplier_communications sc
       LEFT JOIN samples s ON sc.sample_id = s.id

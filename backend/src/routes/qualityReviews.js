@@ -58,7 +58,7 @@ router.get('/', (req, res) => {
         s.sample_code,
         s.name as sample_name,
         c.name as collection_name,
-        u.name as reviewer_name
+        (u.first_name || ' ' || u.last_name) as reviewer_name
       FROM quality_reviews qr
       LEFT JOIN samples s ON qr.sample_id = s.id
       LEFT JOIN collections c ON s.collection_id = c.id
@@ -104,7 +104,7 @@ router.get('/:id', (req, res) => {
         s.sample_code,
         s.name as sample_name,
         c.name as collection_name,
-        u.name as reviewer_name,
+        (u.first_name || ' ' || u.last_name) as reviewer_name,
         u.email as reviewer_email
       FROM quality_reviews qr
       LEFT JOIN samples s ON qr.sample_id = s.id
@@ -127,7 +127,7 @@ router.get('/:id', (req, res) => {
     const comments = db.prepare(`
       SELECT 
         qrc.*,
-        u.name as user_name,
+        (u.first_name || ' ' || u.last_name) as user_name,
         u.email as user_email
       FROM quality_review_comments qrc
       LEFT JOIN users u ON qrc.user_id = u.id
@@ -296,7 +296,7 @@ router.post('/:id/comments', (req, res) => {
     const newComment = db.prepare(`
       SELECT 
         qrc.*,
-        u.name as user_name,
+        (u.first_name || ' ' || u.last_name) as user_name,
         u.email as user_email
       FROM quality_review_comments qrc
       LEFT JOIN users u ON qrc.user_id = u.id

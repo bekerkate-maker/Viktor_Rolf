@@ -47,7 +47,7 @@ router.get('/:id', (req, res) => {
     const samples = db.prepare(`
       SELECT 
         s.*,
-        u.name as responsible_user_name,
+        (u.first_name || ' ' || u.last_name) as responsible_user_name,
         COUNT(DISTINCT qr.id) as quality_review_count
       FROM samples s
       LEFT JOIN users u ON s.responsible_user_id = u.id
