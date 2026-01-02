@@ -67,7 +67,7 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
       
       console.log('Updating sample with payload:', payload);
       
-      await samplesAPI.update(sample.id, payload);
+  await samplesAPI.update(String(sample.id), payload);
 
       onSampleUpdated();
       onClose();

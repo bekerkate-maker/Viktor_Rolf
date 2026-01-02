@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { collectionsAPI } from '../api';
 import type { Collection } from '../types';
 
@@ -7,11 +7,13 @@ function CollectionDetail() {
   const { id } = useParams<{ id: string }>();
   const [collection, setCollection] = useState<Collection | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (id) {
       loadCollection(parseInt(id));
     }
+    // eslint-disable-next-line
   }, [id]);
 
   const loadCollection = async (collectionId: number) => {
@@ -25,24 +27,47 @@ function CollectionDetail() {
     }
   };
 
+  useEffect(() => {
+    if (!loading && !collection) {
+      navigate('/collections', { replace: true });
+    }
+    // eslint-disable-next-line
+  }, [loading, collection]);
+
   if (loading) {
     return <div className="loading">Loading collection...</div>;
   }
-
   if (!collection) {
-    return <div className="empty-state">Collection not found.</div>;
+    return null;
   }
 
   const samples = collection.samples || [];
 
   return (
     <div>
-      <div className="page-header">
-        <Link to="/collections" className="back-arrow-button">
+      <div className="page-header" style={{ position: 'relative' }}>
+        <Link
+          to="/collections"
+          className="back-arrow"
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 16,
+            textDecoration: 'none',
+            color: '#333',
+            fontSize: 32,
+            background: 'rgba(255,255,255,0.85)',
+            borderRadius: '0 18px 18px 0',
+            padding: '8px 18px 8px 8px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            transition: 'background 0.2s',
+          }}
+          title="Back to collections"
+        >
           ←
         </Link>
-        <h1 className="page-title">{collection.name}</h1>
-        <p className="page-subtitle">
+        <h1 className="page-title" style={{ marginLeft: 48 }}>{collection.name}</h1>
+        <p className="page-subtitle" style={{ marginLeft: 48 }}>
           {collection.category} · {collection.season} {collection.year}
         </p>
       </div>

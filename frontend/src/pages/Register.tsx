@@ -68,7 +68,7 @@ function Register() {
         ? formData.custom_job_title 
         : formData.job_title;
 
-      const response = await axios.post('http://localhost:3001/api/auth/register', {
+      const response = await axios.post('/api/auth/register', {
         first_name: formData.first_name,
         last_name: formData.last_name,
         email: formData.email,

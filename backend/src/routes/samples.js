@@ -81,7 +81,7 @@ router.get('/:id', async (req, res) => {
       throw error;
     }
 
-    // Get quality reviews
+    // Get quality reviews (and add sample_round from parent sample)
     const { data: qualityReviews, error: qrError } = await supabase
       .from('quality_reviews')
       .select(`
@@ -92,6 +92,11 @@ router.get('/:id', async (req, res) => {
       .order('created_at', { ascending: false });
 
     if (qrError) throw qrError;
+
+    // Get sample_round from parent sample (already fetched as 'sample')
+    const sampleRound = sample.sample_round;
+    // Add sample_round to each review
+    const qualityReviewsWithRound = qualityReviews.map(qr => ({ ...qr, sample_round: sampleRound }));
 
     // Get supplier communications
     const { data: supplierComms, error: scError } = await supabase
@@ -129,7 +134,7 @@ router.get('/:id', async (req, res) => {
         ? `${sample.responsible_user.first_name} ${sample.responsible_user.last_name}` 
         : null,
       responsible_user_email: sample.responsible_user?.email,
-      quality_reviews: qualityReviews.map(qr => ({
+      quality_reviews: qualityReviewsWithRound.map(qr => ({
         ...qr,
         reviewer_name: qr.reviewer 
           ? `${qr.reviewer.first_name} ${qr.reviewer.last_name}` 

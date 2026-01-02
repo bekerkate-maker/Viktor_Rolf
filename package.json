@@ -10,11 +10,18 @@
     "build": "cd frontend && npm run build",
     "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install"
   },
-  "keywords": ["fashion", "quality-control", "supplier-management"],
+  "keywords": [
+    "fashion",
+    "quality-control",
+    "supplier-management"
+  ],
   "author": "Viktor & Rolf",
   "license": "UNLICENSED",
   "private": true,
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "lucide-react": "^0.562.0"
   }
 }

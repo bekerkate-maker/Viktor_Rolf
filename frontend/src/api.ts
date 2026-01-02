@@ -18,6 +18,28 @@ const api = axios.create({
   },
 });
 
+// Helper: zorgt dat er altijd een geldige token is
+const ensureToken = async (): Promise<string | null> => {
+  let token = localStorage.getItem('token');
+  if (!token) {
+    // Auto-login voor development
+    try {
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
+        email: 'sophie.laurent@viktor-rolf.com',
+        password: 'password123'
+      });
+      token = response.data.token;
+      if (token) {
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+      }
+    } catch (err) {
+      console.error('Auto-login failed:', err);
+    }
+  }
+  return token;
+};
+
 // Collections
 export const collectionsAPI = {
   getAll: () => api.get<Collection[]>('/collections'),
@@ -98,13 +120,11 @@ export const usersAPI = {
 
 // Sample Photos
 export const photosAPI = {
-  uploadPhotos: (sampleId: string, files: File[]) => {
+  uploadPhotos: async (sampleId: string, files: File[]) => {
     const formData = new FormData();
     files.forEach((file) => formData.append('photos', file));
-    // Haal JWT-token uit localStorage
-    const userStr = localStorage.getItem('user');
-    const user = userStr ? JSON.parse(userStr) : null;
-    const token = user?.token;
+    // Zorg dat er een geldige token is
+    const token = await ensureToken();
     return api.post(`/photos/samples/${sampleId}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',

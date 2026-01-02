@@ -194,10 +194,18 @@
 
 .main-layout {
   margin-top: 70px;
-  padding: var(--spacing-2xl) var(--spacing-3xl) var(--spacing-2xl) var(--spacing-xl);
-  max-width: 1600px;
-  margin-left: auto;
-  margin-right: auto;
+  padding: 0 64px !important;
+  max-width: 100% !important;
+  margin-left: 0;
+  margin-right: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.main-content {
+  max-width: 100% !important;
+  padding: 0 !important;
+  width: 100%;
 }
 
 /* Page header */

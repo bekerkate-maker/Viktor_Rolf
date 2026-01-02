@@ -86,8 +86,8 @@ function Layout({ children }: LayoutProps) {
           )}
         </ul>
       </nav>
-      <main className="main-layout">
-        <div className="main-content">{children}</div>
+      <main className="main-layout" style={{padding: 0, maxWidth: 'none'}}>
+        <div className="main-content" style={{maxWidth: 'none', padding: 0}}>{children}</div>
       </main>
     </div>
   );

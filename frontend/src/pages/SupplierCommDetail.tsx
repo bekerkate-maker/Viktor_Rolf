@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supplierCommsAPI } from '../api';
 import type { SupplierCommunication } from '../types';
 
@@ -7,11 +7,13 @@ function SupplierCommDetail() {
   const { id } = useParams<{ id: string }>();
   const [comm, setComm] = useState<SupplierCommunication | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (id) {
       loadCommunication(parseInt(id));
     }
+    // eslint-disable-next-line
   }, [id]);
 
   const loadCommunication = async (commId: number) => {
@@ -30,22 +32,45 @@ function SupplierCommDetail() {
     return new Date(date) < new Date();
   };
 
+  useEffect(() => {
+    if (!loading && !comm) {
+      navigate('/supplier-communications', { replace: true });
+    }
+    // eslint-disable-next-line
+  }, [loading, comm]);
+
   if (loading) {
     return <div className="loading">Loading communication...</div>;
   }
-
   if (!comm) {
-    return <div className="empty-state">Communication not found.</div>;
+    return null;
   }
 
   return (
     <div>
-      <div className="page-header">
-        <Link to="/supplier-communications" className="btn btn-small mb-md">
-          ← Back to Supplier Communications
+      <div className="page-header" style={{ position: 'relative' }}>
+        <Link
+          to="/supplier-communications"
+          className="back-arrow"
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 16,
+            textDecoration: 'none',
+            color: '#333',
+            fontSize: 32,
+            background: 'rgba(255,255,255,0.85)',
+            borderRadius: '0 18px 18px 0',
+            padding: '8px 18px 8px 8px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            transition: 'background 0.2s',
+          }}
+          title="Back to Supplier Communications"
+        >
+          ←
         </Link>
-        <h1 className="page-title">Supplier Communication #{comm.id}</h1>
-        <p className="page-subtitle">
+        <h1 className="page-title" style={{ marginLeft: 48 }}>Supplier Communication #{comm.id}</h1>
+        <p className="page-subtitle" style={{ marginLeft: 48 }}>
           {comm.sample_code} · {comm.supplier_name}
         </p>
       </div>

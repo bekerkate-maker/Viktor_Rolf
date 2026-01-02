@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import db from '../database/connection.js';
+import { supabase } from '../database/supabase.js';
 import { verifyToken } from '../middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -41,47 +41,50 @@ const upload = multer({
 });
 
 // Upload photos for a sample
-router.post('/samples/:sampleId', verifyToken, upload.array('photos', 10), (req, res) => {
+router.post('/samples/:sampleId', verifyToken, upload.array('photos', 10), async (req, res) => {
   try {
     const { sampleId } = req.params;
 
-    // Verify sample exists
-    const sample = db.prepare('SELECT * FROM samples WHERE id = ?').get(sampleId);
-    if (!sample) {
+    // Verify sample exists in Supabase
+    const { data: sample, error: sampleError } = await supabase
+      .from('samples')
+      .select('id')
+      .eq('id', sampleId)
+      .single();
+
+    if (sampleError || !sample) {
       return res.status(404).json({ error: 'Sample not found' });
     }
 
     // Get current highest display order
-    const maxOrder = db.prepare(
-      'SELECT MAX(display_order) as max_order FROM sample_photos WHERE sample_id = ?'
-    ).get(sampleId);
+    const { data: maxOrderData } = await supabase
+      .from('sample_photos')
+      .select('display_order')
+      .eq('sample_id', sampleId)
+      .order('display_order', { ascending: false })
+      .limit(1)
+      .single();
     
-    let nextOrder = (maxOrder?.max_order || 0) + 1;
+    let nextOrder = (maxOrderData?.display_order || 0) + 1;
 
     // Insert photo records
-    const insertStmt = db.prepare(`
-      INSERT INTO sample_photos (sample_id, file_path, file_name, display_order)
-      VALUES (?, ?, ?, ?)
-    `);
+    const photosToInsert = req.files.map(file => ({
+      sample_id: sampleId,
+      file_path: `/uploads/samples/${file.filename}`,
+      file_name: file.originalname,
+      display_order: nextOrder++,
+      is_main_photo: false
+    }));
 
-    const photos = req.files.map(file => {
-      const result = insertStmt.run(
-        sampleId,
-        `/uploads/samples/${file.filename}`,
-        file.originalname,
-        nextOrder++
-      );
-      
-      return {
-        id: result.lastInsertRowid,
-        sample_id: parseInt(sampleId),
-        file_path: `/uploads/samples/${file.filename}`,
-        file_name: file.originalname,
-        is_main_photo: 0,
-        display_order: nextOrder - 1,
-        uploaded_at: new Date().toISOString()
-      };
-    });
+    const { data: photos, error: insertError } = await supabase
+      .from('sample_photos')
+      .insert(photosToInsert)
+      .select();
+
+    if (insertError) {
+      console.error('Insert error:', insertError);
+      return res.status(500).json({ error: 'Failed to save photo records' });
+    }
 
     res.status(201).json(photos);
   } catch (error) {
@@ -91,17 +94,23 @@ router.post('/samples/:sampleId', verifyToken, upload.array('photos', 10), (req,
 });
 
 // Get all photos for a sample
-router.get('/samples/:sampleId', (req, res) => {
+router.get('/samples/:sampleId', async (req, res) => {
   try {
     const { sampleId } = req.params;
     
-    const photos = db.prepare(`
-      SELECT * FROM sample_photos 
-      WHERE sample_id = ? 
-      ORDER BY is_main_photo DESC, display_order ASC
-    `).all(sampleId);
+    const { data: photos, error } = await supabase
+      .from('sample_photos')
+      .select('*')
+      .eq('sample_id', sampleId)
+      .order('is_main_photo', { ascending: false })
+      .order('display_order', { ascending: true });
 
-    res.json(photos);
+    if (error) {
+      console.error('Get photos error:', error);
+      return res.status(500).json({ error: 'Failed to retrieve photos' });
+    }
+
+    res.json(photos || []);
   } catch (error) {
     console.error('Get photos error:', error);
     res.status(500).json({ error: 'Failed to retrieve photos' });
@@ -109,23 +118,32 @@ router.get('/samples/:sampleId', (req, res) => {
 });
 
 // Set main photo for a sample
-router.put('/:photoId/set-main', verifyToken, (req, res) => {
+router.put('/:photoId/set-main', verifyToken, async (req, res) => {
   try {
     const { photoId } = req.params;
     
     // Get the photo to find its sample_id
-    const photo = db.prepare('SELECT * FROM sample_photos WHERE id = ?').get(photoId);
-    if (!photo) {
+    const { data: photo, error: fetchError } = await supabase
+      .from('sample_photos')
+      .select('*')
+      .eq('id', photoId)
+      .single();
+
+    if (fetchError || !photo) {
       return res.status(404).json({ error: 'Photo not found' });
     }
 
     // Reset all photos for this sample to not be main
-    db.prepare('UPDATE sample_photos SET is_main_photo = 0 WHERE sample_id = ?')
-      .run(photo.sample_id);
+    await supabase
+      .from('sample_photos')
+      .update({ is_main_photo: false })
+      .eq('sample_id', photo.sample_id);
 
     // Set this photo as main
-    db.prepare('UPDATE sample_photos SET is_main_photo = 1 WHERE id = ?')
-      .run(photoId);
+    await supabase
+      .from('sample_photos')
+      .update({ is_main_photo: true })
+      .eq('id', photoId);
 
     res.json({ message: 'Main photo updated successfully' });
   } catch (error) {
@@ -135,13 +153,19 @@ router.put('/:photoId/set-main', verifyToken, (req, res) => {
 });
 
 // Update photo display order
-router.put('/:photoId/order', verifyToken, (req, res) => {
+router.put('/:photoId/order', verifyToken, async (req, res) => {
   try {
     const { photoId } = req.params;
     const { display_order } = req.body;
 
-    db.prepare('UPDATE sample_photos SET display_order = ? WHERE id = ?')
-      .run(display_order, photoId);
+    const { error } = await supabase
+      .from('sample_photos')
+      .update({ display_order })
+      .eq('id', photoId);
+
+    if (error) {
+      return res.status(500).json({ error: 'Failed to update photo order' });
+    }
 
     res.json({ message: 'Photo order updated successfully' });
   } catch (error) {
@@ -151,21 +175,30 @@ router.put('/:photoId/order', verifyToken, (req, res) => {
 });
 
 // Delete a photo
-router.delete('/:photoId', verifyToken, (req, res) => {
+router.delete('/:photoId', verifyToken, async (req, res) => {
   try {
     const { photoId } = req.params;
     
     // Get photo info before deleting
-    const photo = db.prepare('SELECT * FROM sample_photos WHERE id = ?').get(photoId);
-    if (!photo) {
+    const { data: photo, error: fetchError } = await supabase
+      .from('sample_photos')
+      .select('*')
+      .eq('id', photoId)
+      .single();
+
+    if (fetchError || !photo) {
       return res.status(404).json({ error: 'Photo not found' });
     }
 
     // Delete from database
-    db.prepare('DELETE FROM sample_photos WHERE id = ?').run(photoId);
+    const { error: deleteError } = await supabase
+      .from('sample_photos')
+      .delete()
+      .eq('id', photoId);
 
-    // TODO: Also delete the actual file from filesystem if needed
-    // fs.unlinkSync(path.join(__dirname, '../../', photo.file_path));
+    if (deleteError) {
+      return res.status(500).json({ error: 'Failed to delete photo' });
+    }
 
     res.json({ message: 'Photo deleted successfully' });
   } catch (error) {

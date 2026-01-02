@@ -12,7 +12,14 @@ router.get('/', async (req, res) => {
     const { data: collections, error } = await supabase
       .from('collections')
       .select(`
-        *,
+        id,
+        name,
+        season,
+        year,
+        category,
+        status,
+        created_at,
+        updated_at,
         samples(id, status)
       `)
       .order('year', { ascending: false })
@@ -20,8 +27,16 @@ router.get('/', async (req, res) => {
 
     if (error) throw error;
 
-    // Calculate counts for each collection
-    const collectionsWithCounts = collections.map(c => ({
+    // Filter out collections missing category and log a warning
+    const validCollections = collections.filter(c => {
+      if (!c.category) {
+        console.warn('Collection missing category:', c);
+        return false;
+      }
+      return true;
+    });
+    // Calculate counts for each valid collection
+    const collectionsWithCounts = validCollections.map(c => ({
       ...c,
       sample_count: c.samples?.length || 0,
       in_review_count: c.samples?.filter(s => s.status === 'In Review').length || 0,
@@ -91,11 +106,17 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    const { name, season, year, type } = req.body;
+    const { name, season, year, type, category, status } = req.body;
 
     const { data: collection, error } = await supabase
       .from('collections')
-      .insert({ name, season, year, type })
+      .insert({ 
+        name, 
+        season, 
+        year, 
+        category: category || type,
+        status: status || 'Active'
+      })
       .select()
       .single();
 
