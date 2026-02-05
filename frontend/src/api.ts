@@ -43,10 +43,10 @@ const ensureToken = async (): Promise<string | null> => {
 // Collections
 export const collectionsAPI = {
   getAll: () => api.get<Collection[]>('/collections'),
-  getById: (id: number) => api.get<Collection>(`/collections/${id}`),
+  getById: (id: string) => api.get<Collection>(`/collections/${id}`),
   create: (data: Partial<Collection>) => api.post<Collection>('/collections', data),
-  update: (id: number, data: Partial<Collection>) => api.put<Collection>(`/collections/${id}`, data),
-  delete: (id: number) => api.delete(`/collections/${id}`),
+  update: (id: string, data: Partial<Collection>) => api.put<Collection>(`/collections/${id}`, data),
+  delete: (id: string) => api.delete(`/collections/${id}`),
 };
 
 // Samples

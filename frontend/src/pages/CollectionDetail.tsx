@@ -11,12 +11,12 @@ function CollectionDetail() {
 
   useEffect(() => {
     if (id) {
-      loadCollection(parseInt(id));
+      loadCollection(id);
     }
     // eslint-disable-next-line
   }, [id]);
 
-  const loadCollection = async (collectionId: number) => {
+  const loadCollection = async (collectionId: string) => {
     try {
       const response = await collectionsAPI.getById(collectionId);
       setCollection(response.data);

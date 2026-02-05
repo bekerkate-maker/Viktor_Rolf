@@ -24,6 +24,7 @@ async function addSS26Samples() {
       .select('id, name')
       .eq('season', 'SS')
       .eq('year', 2026)
+      .eq('category', 'Ready to Wear')
       .single();
 
     if (collectionError || !collection) {

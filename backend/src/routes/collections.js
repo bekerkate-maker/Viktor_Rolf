@@ -27,14 +27,30 @@ router.get('/', async (req, res) => {
 
     if (error) throw error;
 
+    // Safety check: ensure collections is an array
+    const collectionsToProcess = collections || [];
+
+    // Auto-fix: if category is missing, try to infer it from the name for the response
+    const collectionsWithFixedCategories = collectionsToProcess.map(c => {
+      let category = c.category;
+      if (!category && c.name) {
+        const name = c.name.toLowerCase();
+        if (name.includes('ready to wear') || name.includes('rtw')) category = 'Ready to Wear';
+        else if (name.includes('couture')) category = 'Haute Couture';
+        else if (name.includes('mariage')) category = 'Mariage';
+      }
+      return { ...c, category };
+    });
+
     // Filter out collections missing category and log a warning
-    const validCollections = collections.filter(c => {
+    const validCollections = collectionsWithFixedCategories.filter(c => {
       if (!c.category) {
         console.warn('Collection missing category:', c);
         return false;
       }
       return true;
     });
+
     // Calculate counts for each valid collection
     const collectionsWithCounts = validCollections.map(c => ({
       ...c,
@@ -87,8 +103,8 @@ router.get('/:id', async (req, res) => {
     // Transform samples
     collection.samples = samples.map(s => ({
       ...s,
-      responsible_user_name: s.responsible_user 
-        ? `${s.responsible_user.first_name} ${s.responsible_user.last_name}` 
+      responsible_user_name: s.responsible_user
+        ? `${s.responsible_user.first_name} ${s.responsible_user.last_name}`
         : null,
       quality_review_count: s.quality_reviews?.length || 0
     }));
@@ -110,10 +126,10 @@ router.post('/', async (req, res) => {
 
     const { data: collection, error } = await supabase
       .from('collections')
-      .insert({ 
-        name, 
-        season, 
-        year, 
+      .insert({
+        name,
+        season,
+        year,
         category: category || type,
         status: status || 'Active'
       })

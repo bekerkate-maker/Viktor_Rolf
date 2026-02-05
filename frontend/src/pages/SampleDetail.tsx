@@ -6,7 +6,9 @@ import type { Sample, SamplePhoto } from '../types';
 import { getStatusBadge } from '../components/SampleHeader';
 import EditSampleModal from '../components/EditSampleModal';
 // Voeg Lucide icons toe voor buttons
-import { Plus, X, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Plus, X, ChevronLeft, ChevronRight, ArrowLeft, Trash2, Pencil, Check } from 'lucide-react';
+
+const STATUS_OPTIONS = ['In Review', 'Changes Needed', 'Approved', 'Rejected'] as const;
 
 function SampleDetail() {
   const params = useParams<{ id: string; collectionId?: string }>();
@@ -19,6 +21,9 @@ function SampleDetail() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState('');
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -66,6 +71,66 @@ function SampleDetail() {
       alert(msg);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDeletePhoto = async (photoId: number) => {
+    if (!window.confirm('Are you sure you want to delete this photo?')) return;
+    
+    try {
+      await photosAPI.deletePhoto(photoId);
+      // Als we de huidige foto verwijderen, ga naar de vorige of sluit lightbox
+      if (photos.length === 1) {
+        setShowLightbox(false);
+      } else if (lightboxIndex >= photos.length - 1) {
+        setLightboxIndex(photos.length - 2);
+      }
+      if (id) await loadPhotos(id);
+    } catch (error: any) {
+      console.error('Error deleting photo:', error);
+      alert('Failed to delete photo');
+    }
+  };
+
+  // Start editing name
+  const handleStartEditName = () => {
+    if (sample) {
+      setEditedName(sample.name);
+      setIsEditingName(true);
+    }
+  };
+
+  // Save edited name
+  const handleSaveName = async () => {
+    if (!sample || !id || editedName.trim() === '') return;
+    
+    try {
+      await samplesAPI.update(id, { name: editedName.trim() });
+      setSample({ ...sample, name: editedName.trim() });
+      setIsEditingName(false);
+    } catch (error) {
+      console.error('Error updating sample name:', error);
+      alert('Failed to update sample name');
+    }
+  };
+
+  // Cancel editing name
+  const handleCancelEditName = () => {
+    setIsEditingName(false);
+    setEditedName('');
+  };
+
+  // Update status
+  const handleStatusChange = async (newStatus: typeof STATUS_OPTIONS[number]) => {
+    if (!sample || !id) return;
+    
+    try {
+      await samplesAPI.update(id, { status: newStatus });
+      setSample({ ...sample, status: newStatus });
+      setShowStatusDropdown(false);
+    } catch (error) {
+      console.error('Error updating sample status:', error);
+      alert('Failed to update sample status');
     }
   };
 
@@ -126,11 +191,162 @@ function SampleDetail() {
       </div>
 
       {/* Brede header */}
-      <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 32, marginBottom: 16, padding: '16px 16px 0 16px'}}>
-        <div style={{fontWeight: 700, fontSize: 32, letterSpacing: 1.2, color: '#111', wordBreak: 'break-word'}}>
-          {sample.sample_code.split('-').pop()} — {sample.name}
+      <div style={{
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between', 
+        gap: 32, 
+        margin: '16px 0 0 0',
+        padding: '20px 0',
+      }}>
+        {/* Editable sample name */}
+        <div style={{
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 12,
+        }}>
+          <span style={{fontWeight: 700, fontSize: 32, letterSpacing: 1.2, color: '#111'}}>
+            {sample.sample_code.split('-').pop()} —
+          </span>
+          {isEditingName ? (
+            <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
+              <input
+                type="text"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveName();
+                  if (e.key === 'Escape') handleCancelEditName();
+                }}
+                autoFocus
+                style={{
+                  fontWeight: 700,
+                  fontSize: 32,
+                  letterSpacing: 1.2,
+                  color: '#111',
+                  border: 'none',
+                  borderBottom: '2px solid #111',
+                  background: 'transparent',
+                  outline: 'none',
+                  padding: '0 4px',
+                  minWidth: 200,
+                }}
+              />
+              <button
+                onClick={handleSaveName}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 32,
+                  height: 32,
+                  borderRadius: '50%',
+                  border: '1px solid #4CAF50',
+                  background: '#4CAF50',
+                  cursor: 'pointer',
+                  color: '#fff',
+                }}
+                title="Save"
+              >
+                <Check size={16} />
+              </button>
+              <button
+                onClick={handleCancelEditName}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 32,
+                  height: 32,
+                  borderRadius: '50%',
+                  border: '1px solid #ddd',
+                  background: '#fff',
+                  cursor: 'pointer',
+                }}
+                title="Cancel"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          ) : (
+            <span 
+              onClick={handleStartEditName}
+              style={{
+                fontWeight: 700, 
+                fontSize: 32, 
+                letterSpacing: 1.2, 
+                color: '#111', 
+                wordBreak: 'break-word',
+                cursor: 'pointer',
+                borderBottom: '2px solid transparent',
+                transition: 'border-color 0.2s',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.borderBottom = '2px solid #111'}
+              onMouseLeave={(e) => e.currentTarget.style.borderBottom = '2px solid transparent'}
+              title="Click to edit name"
+            >
+              {sample.name}
+            </span>
+          )}
         </div>
-        <div>{getStatusBadge(sample.status)}</div>
+        
+        {/* Clickable status dropdown */}
+        <div style={{position: 'relative'}}>
+          <div 
+            onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+            style={{cursor: 'pointer'}}
+            title="Click to change status"
+          >
+            {getStatusBadge(sample.status)}
+          </div>
+          
+          {showStatusDropdown && (
+            <>
+              {/* Invisible overlay to close dropdown when clicking outside */}
+              <div 
+                onClick={() => setShowStatusDropdown(false)}
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  zIndex: 99,
+                }}
+              />
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: 8,
+                background: '#fff',
+                borderRadius: 8,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                overflow: 'hidden',
+                zIndex: 100,
+                minWidth: 180,
+              }}>
+                {STATUS_OPTIONS.map((status) => (
+                  <div
+                    key={status}
+                    onClick={() => handleStatusChange(status)}
+                    style={{
+                      padding: '12px 16px',
+                      cursor: 'pointer',
+                      background: sample.status === status ? '#f5f5f5' : '#fff',
+                      borderLeft: sample.status === status ? '3px solid #111' : '3px solid transparent',
+                      transition: 'background 0.2s',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = sample.status === status ? '#f5f5f5' : '#fff'}
+                  >
+                    {getStatusBadge(status)}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
       
       {/* Layout: foto boven, info + notes onder */}
@@ -138,7 +354,7 @@ function SampleDetail() {
         {/* Foto gallery widget - banner style, volle breedte, geen marge */}
         <div style={{background: '#fff', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column'}}>
           {/* Photo gallery - banner formaat, max 4 zichtbaar */}
-          <div style={{width: '100%', height: 200, display: 'grid', gridTemplateColumns: photos.length === 1 ? '1fr' : photos.length === 2 ? '1fr 1fr' : photos.length === 3 ? '1fr 1fr 1fr' : '1fr 1fr 1fr 1fr', gap: 2, background: '#f5f5f5'}}>
+          <div style={{width: '100%', height: 280, display: 'grid', gridTemplateColumns: photos.length === 1 ? '1fr' : photos.length === 2 ? '1fr 1fr' : photos.length === 3 ? '1fr 1fr 1fr' : '1fr 1fr 1fr 1fr', gap: 2, background: '#f5f5f5'}}>
             {photos.length > 0 ? (
               photos.slice(0, 4).map((photo, index) => {
                 const isLastWithMore = index === 3 && photos.length > 4;
@@ -219,41 +435,99 @@ function SampleDetail() {
         </div>
 
         {/* Onderste rij: Sample Info + Internal Notes naast elkaar */}
-        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, padding: '0 16px 48px 16px'}}>
+        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, padding: '0 16px 48px 16px', alignItems: 'stretch'}}>
           {/* Sample Information */}
           <div className="luxury-card" style={{border: '1px solid #eee', borderRadius: 12, background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.03)', padding: 24, display: 'flex', flexDirection: 'column'}}>
-            <h3 className="luxury-card-title" style={{fontWeight: 600, fontSize: 20, letterSpacing: 1, marginBottom: 18}}>Sample Information</h3>
-            <div className="luxury-info-grid" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 22px'}}>
+            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24}}>
+              <h3 className="luxury-card-title" style={{fontWeight: 600, fontSize: 18, letterSpacing: 1, margin: 0}}>Sample Information</h3>
+              <button
+                onClick={() => setShowEditModal(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  borderRadius: 6,
+                  border: '1px solid #ddd',
+                  background: '#fff',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: '#333',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f5f5f5';
+                  e.currentTarget.style.borderColor = '#111';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#fff';
+                  e.currentTarget.style.borderColor = '#ddd';
+                }}
+              >
+                <Pencil size={14} />
+                Edit
+              </button>
+            </div>
+            <div className="luxury-info-grid" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px 40px', flex: 1}}>
               <div>
-                <div style={{fontSize: 12, color: '#888', marginBottom: 2}}>Status</div>
-                <div style={{fontWeight: 600, color: '#111'}}>{sample.status}</div>
+                <div style={{fontSize: 12, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5}}>Status</div>
+                <div style={{fontWeight: 500, color: '#111', fontSize: 16}}>{sample.status}</div>
               </div>
               <div>
-                <div style={{fontSize: 12, color: '#888', marginBottom: 2}}>Sample Round</div>
-                <div style={{fontWeight: 600, color: '#111'}}>{sample.sample_round}</div>
+                <div style={{fontSize: 12, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5}}>Sample Round</div>
+                <div style={{fontWeight: 500, color: '#111', fontSize: 16}}>{sample.sample_round}</div>
               </div>
               <div>
-                <div style={{fontSize: 12, color: '#888', marginBottom: 2}}>Type</div>
-                <div style={{fontWeight: 600, color: '#111'}}>{sample.product_type}</div>
+                <div style={{fontSize: 12, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5}}>Type</div>
+                <div style={{fontWeight: 500, color: '#111', fontSize: 16}}>{sample.product_type}</div>
               </div>
               <div>
-                <div style={{fontSize: 12, color: '#888', marginBottom: 2}}>Responsible</div>
-                <div style={{fontWeight: 600, color: '#111'}}>{sample.responsible_user_name}</div>
+                <div style={{fontSize: 12, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5}}>Responsible</div>
+                <div style={{fontWeight: 500, color: '#111', fontSize: 16}}>{sample.responsible_user_name || '—'}</div>
               </div>
               <div>
-                <div style={{fontSize: 12, color: '#888', marginBottom: 2}}>QC Reviews</div>
-                <div style={{fontWeight: 600, color: '#111'}}>{sample.quality_review_count || 0}</div>
+                <div style={{fontSize: 12, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5}}>QC Reviews</div>
+                <div style={{fontWeight: 500, color: '#111', fontSize: 16}}>{sample.quality_review_count || 0}</div>
               </div>
               <div>
-                <div style={{fontSize: 12, color: '#888', marginBottom: 2}}>Last Updated</div>
-                <div style={{fontWeight: 600, color: '#111'}}>{new Date(sample.updated_at).toLocaleDateString()}</div>
+                <div style={{fontSize: 12, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5}}>Last Updated</div>
+                <div style={{fontWeight: 500, color: '#111', fontSize: 16}}>{new Date(sample.updated_at).toLocaleDateString()}</div>
+              </div>
+              <div>
+                <div style={{fontSize: 12, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5}}>Internal Notes</div>
+                <div style={{fontWeight: 500, color: sample.internal_notes ? '#111' : '#bbb', fontSize: 16, fontStyle: sample.internal_notes ? 'normal' : 'italic'}}>
+                  {sample.internal_notes || 'No notes added'}
+                </div>
+              </div>
+              <div>
+                <div style={{fontSize: 12, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5}}>Tags</div>
+                <div style={{display: 'flex', gap: 8, flexWrap: 'wrap'}}>
+                  {sample.tags ? (
+                    sample.tags.split(',').map((tag, i) => (
+                      <span key={i} style={{
+                        background: '#f5f5f5',
+                        border: '1px solid #eee',
+                        borderRadius: 16,
+                        padding: '4px 12px',
+                        fontSize: 13,
+                        color: '#555',
+                        fontWeight: 500,
+                      }}>
+                        {tag.trim()}
+                      </span>
+                    ))
+                  ) : (
+                    <span style={{color: '#bbb', fontSize: 16, fontStyle: 'italic'}}>No tags added</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Internal Notes */}
           <div className="luxury-card" style={{border: '1px solid #eee', borderRadius: 12, background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.03)', padding: 24, display: 'flex', flexDirection: 'column'}}>
-            <h3 className="luxury-card-title" style={{fontWeight: 600, fontSize: 20, letterSpacing: 1, marginBottom: 16}}>Internal Notes</h3>
+            <h3 className="luxury-card-title" style={{fontWeight: 600, fontSize: 18, letterSpacing: 1, marginBottom: 16}}>Internal Notes</h3>
             <InternalNotesSection sample={sample} />
           </div>
         </div>
@@ -355,6 +629,37 @@ function SampleDetail() {
           }}>
             {lightboxIndex + 1} / {photos.length}
           </div>
+
+          {/* Delete button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeletePhoto(photos[lightboxIndex].id);
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginTop: 12,
+              padding: '8px 16px',
+              background: 'rgba(220, 53, 69, 0.9)',
+              border: 'none',
+              borderRadius: 6,
+              color: '#fff',
+              cursor: 'pointer',
+              fontSize: 14,
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(220, 53, 69, 1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(220, 53, 69, 0.9)';
+            }}
+          >
+            <Trash2 size={16} />
+            Delete Photo
+          </button>
 
           {/* Thumbnail strip */}
           <div style={{

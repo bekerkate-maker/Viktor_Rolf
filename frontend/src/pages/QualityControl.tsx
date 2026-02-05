@@ -11,7 +11,7 @@ type Category = 'Mariage' | 'Haute Couture' | 'Ready to Wear';
 function QualityControl() {
   const params = useParams<{ category?: string; year?: string; season?: string }>();
   const navigate = useNavigate();
-  
+
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedSeason, setSelectedSeason] = useState<string | null>(null);
@@ -27,6 +27,7 @@ function QualityControl() {
   const [showAddYearModal, setShowAddYearModal] = useState(false);
   const [newYear, setNewYear] = useState<number>(new Date().getFullYear() + 1);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [showAllSamples, setShowAllSamples] = useState(false);
 
   // Initialize from URL params
   useEffect(() => {
@@ -72,12 +73,16 @@ function QualityControl() {
       console.log('All collections:', response.data);
       // Convert selectedSeason to database format (SS or FW)
       const seasonCode = selectedSeason === 'Spring/Summer' ? 'SS' : 'FW';
-      console.log('Filtering by:', { category: selectedCategory, year: selectedYear, seasonCode });
-      const filtered = response.data.filter((col: any) => 
-        col.category === selectedCategory && 
-        col.year === selectedYear &&
-        col.season === seasonCode
-      );
+      const filtered = response.data.filter((col: any) => {
+        const catMatch = col.category && selectedCategory &&
+          col.category.trim().toLowerCase() === selectedCategory.trim().toLowerCase();
+
+        const yearMatch = Number(col.year) === Number(selectedYear);
+
+        const seasonMatch = col.season === seasonCode;
+
+        return catMatch && yearMatch && seasonMatch;
+      });
       console.log('Filtered collections:', filtered);
       setCollections(filtered);
       setLoading(false);
@@ -94,7 +99,7 @@ function QualityControl() {
       // Get samples from all collections for this category/year/season
       const allSamples: Sample[] = [];
       for (const collection of collections) {
-  const response = await samplesAPI.getByCollection(String(collection.id));
+        const response = await samplesAPI.getByCollection(String(collection.id));
         console.log(`Samples for collection ${collection.id}:`, response.data);
         allSamples.push(...response.data);
       }
@@ -119,9 +124,10 @@ function QualityControl() {
       const response = await collectionsAPI.getAll();
       const years = [...new Set(
         response.data
-          .filter((col: Collection) => col.category === category)
+          .filter((col: Collection) => col.category && category &&
+            col.category.trim().toLowerCase() === category.trim().toLowerCase())
           .map((col: Collection) => col.year)
-      )].sort((a, b) => b - a);
+      )].sort((a, b) => (b as number) - (a as number));
       setAvailableYears(years as number[]);
     } catch (error) {
       console.error('Error loading years:', error);
@@ -130,7 +136,7 @@ function QualityControl() {
 
   const handleAddYear = async () => {
     if (!selectedCategory || !newYear) return;
-    
+
     try {
       setLoading(true);
       // Create SS collection
@@ -149,7 +155,7 @@ function QualityControl() {
         category: selectedCategory,
         status: 'Active'
       });
-      
+
       // Refresh available years
       await loadAvailableYears(selectedCategory);
       setShowAddYearModal(false);
@@ -170,7 +176,7 @@ function QualityControl() {
     }
     setSelectedYear(year);
     setSelectedSeason(season);
-    
+
     // Navigate to URL with parameters
     const categorySlug = category.toLowerCase().replace(/ /g, '-');
     const seasonSlug = season === 'Spring/Summer' ? 'ss' : 'fw';
@@ -219,7 +225,7 @@ function QualityControl() {
     }
 
     try {
-  await samplesAPI.delete(String(sample.id));
+      await samplesAPI.delete(String(sample.id));
       // Reload samples after successful delete
       await loadSamples();
     } catch (error: any) {
@@ -248,7 +254,7 @@ function QualityControl() {
       {/* Terug knop - links boven, onder de navbar */}
       {selectedCategory && (
         <div style={{ paddingTop: 16, paddingLeft: 0 }}>
-          <button 
+          <button
             onClick={() => {
               if (selectedYear && selectedSeason) {
                 setSelectedSeason(null);
@@ -285,14 +291,14 @@ function QualityControl() {
           </button>
         </div>
       )}
-      
+
       <div className="page-header" style={{ marginTop: selectedCategory ? 16 : 48 }}>
         <h1 className="page-title" style={{ margin: 0 }}>Quality Control</h1>
         <p className="page-subtitle">
           {!selectedCategory ? 'Select category and collection to review samples' :
-           !selectedYear ? `Select ${selectedCategory} year` :
-           !selectedSeason ? `Select ${selectedYear} season` :
-           'Review samples'}
+            !selectedYear ? `Select ${selectedCategory} year` :
+              !selectedSeason ? `Select ${selectedYear} season` :
+                'Review samples'}
         </p>
       </div>
 
@@ -312,72 +318,104 @@ function QualityControl() {
             )}
           </div>
 
-        {/* Search Results */}
-        {searchQuery && searchResults.collections.length === 0 && searchResults.samples.length === 0 && !loading && (
-          <div className="search-empty">No results found for "{searchQuery}"</div>
-        )}
+          {/* Search Results */}
+          {searchQuery && searchResults.collections.length === 0 && searchResults.samples.length === 0 && !loading && (
+            <div className="search-empty">No results found for "{searchQuery}"</div>
+          )}
 
-        {searchQuery && (searchResults.collections.length > 0 || searchResults.samples.length > 0) && (
-          <div className="search-results">
-            {searchResults.collections.length > 0 && (
-              <div className="search-results-section">
-                <h3 className="search-results-title">Collections ({searchResults.collections.length})</h3>
-                <div className="collections-list">
-                  {searchResults.collections.map((collection) => (
-                    <div
-                      key={collection.id}
-                      className="collection-item"
-                      onClick={() => {
-                        clearSearch();
-                        setSelectedCategory(collection.category);
-                        setSelectedYear(collection.year);
-                        setSelectedSeason(collection.season);
+          {searchQuery && (searchResults.collections.length > 0 || searchResults.samples.length > 0) && (
+            <div className="search-results">
+              {searchResults.collections.length > 0 && (
+                <div className="search-results-section">
+                  <h3 className="search-results-title">Collections ({searchResults.collections.length})</h3>
+                  <div className="collections-list">
+                    {searchResults.collections.map((collection) => (
+                      <div
+                        key={collection.id}
+                        className="collection-item"
+                        onClick={() => {
+                          clearSearch();
+                          setSelectedCategory(collection.category);
+                          setSelectedYear(collection.year);
+                          setSelectedSeason(collection.season);
+                        }}
+                      >
+                        <div>
+                          <div className="collection-item-name">{collection.name}</div>
+                          <div className="collection-item-meta">
+                            {collection.season} {collection.year} · {collection.category}
+                          </div>
+                        </div>
+                        <div className="collection-item-arrow">→</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {searchResults.samples.length > 0 && (
+                <div className="search-results-section">
+                  <h3 className="search-results-title">Samples ({searchResults.samples.length})</h3>
+                  <div className="samples-grid">
+                    {searchResults.samples.slice(0, showAllSamples ? undefined : 12).map((sample) => (
+                      <Link
+                        key={sample.id}
+                        to={`/samples/${sample.id}`}
+                        className="sample-card"
+                      >
+                        <div className="sample-card-header">
+                          <span className="sample-code">{sample.sample_code}</span>
+                          <span className={`badge ${getStatusBadgeClass(sample.status)}`}>
+                            {sample.status}
+                          </span>
+                        </div>
+                        <div className="sample-card-name">{sample.name}</div>
+                        <div className="sample-card-meta">
+                          {sample.sample_round} · {sample.product_type}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                  {searchResults.samples.length > 12 && (
+                    <button
+                      onClick={() => setShowAllSamples(!showAllSamples)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        margin: '24px auto 0',
+                        padding: '10px 20px',
+                        background: '#fff',
+                        border: '1px solid #ddd',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        fontSize: 14,
+                        fontWeight: 500,
+                        color: '#333',
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#f5f5f5';
+                        e.currentTarget.style.borderColor = '#111';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#fff';
+                        e.currentTarget.style.borderColor = '#ddd';
                       }}
                     >
-                      <div>
-                        <div className="collection-item-name">{collection.name}</div>
-                        <div className="collection-item-meta">
-                          {collection.season} {collection.year} · {collection.category}
-                        </div>
-                      </div>
-                      <div className="collection-item-arrow">→</div>
-                    </div>
-                  ))}
+                      {showAllSamples ? (
+                        <>Show less</>
+                      ) : (
+                        <>+ {searchResults.samples.length - 12} more samples</>
+                      )}
+                    </button>
+                  )}
                 </div>
-              </div>
-            )}
-
-            {searchResults.samples.length > 0 && (
-              <div className="search-results-section">
-                <h3 className="search-results-title">Samples ({searchResults.samples.length})</h3>
-                <div className="samples-grid">
-                  {searchResults.samples.slice(0, 12).map((sample) => (
-                    <Link
-                      key={sample.id}
-                      to={`/samples/${sample.id}`}
-                      className="sample-card"
-                    >
-                      <div className="sample-card-header">
-                        <span className="sample-code">{sample.sample_code}</span>
-                        <span className={`badge ${getStatusBadgeClass(sample.status)}`}>
-                          {sample.status}
-                        </span>
-                      </div>
-                      <div className="sample-card-name">{sample.name}</div>
-                      <div className="sample-card-meta">
-                        {sample.sample_round} · {sample.product_type}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-                {searchResults.samples.length > 12 && (
-                  <p className="search-more">+ {searchResults.samples.length - 12} more samples</p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Category Selection */}
@@ -385,29 +423,113 @@ function QualityControl() {
         <div className="category-selection">
           <h2 className="section-title">Select Category</h2>
           <div className="category-grid">
-            <div 
-              className="category-card"
-              onClick={() => handleCategorySelect('Ready to Wear')}
-            >
-              <div className="category-icon">�</div>
-              <h3>Ready to Wear</h3>
-              <p>RTW Collection</p>
+            <div className="category-card-wrapper">
+              <div
+                className="category-card"
+                onClick={() => handleCategorySelect('Ready to Wear')}
+              >
+                <div className="category-icon">👔</div>
+                <h3>Ready to Wear</h3>
+                <p>RTW Collection</p>
+              </div>
+              {/* 3 Fashion photos onder Ready to Wear */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr 1fr',
+                gap: 0,
+                marginTop: 0,
+              }}>
+                <div style={{
+                  height: 200,
+                  backgroundImage: 'url(/model_front_AW_GREEN_DRESS_195481.jpg.webp)',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center top',
+                }} />
+                <div style={{
+                  height: 200,
+                  backgroundImage: 'url(/model_front_WT0140039425_4998RTW_FW25MAINDENIM_model.jpg.webp)',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center top',
+                }} />
+                <div style={{
+                  height: 200,
+                  backgroundImage: 'url(/model_front_WO0060099425_3759RTW_FW25MAINDENIM_model.jpg.webp)',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center top',
+                }} />
+              </div>
             </div>
-            <div 
-              className="category-card"
-              onClick={() => handleCategorySelect('Haute Couture')}
-            >
-              <div className="category-icon">👗</div>
-              <h3>Haute Couture</h3>
-              <p>Couture Collection</p>
+            <div className="category-card-wrapper">
+              <div
+                className="category-card"
+                onClick={() => handleCategorySelect('Haute Couture')}
+              >
+                <div className="category-icon">👗</div>
+                <h3>Haute Couture</h3>
+                <p>Couture Collection</p>
+              </div>
+              {/* 3 Fashion photos onder Haute Couture */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr 1fr',
+                gap: 0,
+                marginTop: 0,
+              }}>
+                <div style={{
+                  height: 200,
+                  backgroundImage: 'url(/V_R_HCAW22_S2_32057.jpg.webp)',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center top',
+                }} />
+                <div style={{
+                  height: 200,
+                  backgroundImage: 'url(/VR_SS25_0082.jpg.webp)',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center top',
+                }} />
+                <div style={{
+                  height: 200,
+                  backgroundImage: 'url(/Haute_Couture_AW25__Viktor_Rolf_HC_F25_LOOK_003.jpg.webp)',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center top',
+                }} />
+              </div>
             </div>
-            <div 
-              className="category-card"
-              onClick={() => handleCategorySelect('Mariage')}
-            >
-              <div className="category-icon">�</div>
-              <h3>Mariage</h3>
-              <p>Bridal Collection</p>
+            <div className="category-card-wrapper">
+              <div
+                className="category-card"
+                onClick={() => handleCategorySelect('Mariage')}
+              >
+                <div className="category-icon">💍</div>
+                <h3>Mariage</h3>
+                <p>Bridal Collection</p>
+              </div>
+              {/* 3 Fashion photos onder Mariage */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr 1fr',
+                gap: 0,
+                marginTop: 0,
+              }}>
+                <div style={{
+                  height: 200,
+                  backgroundImage: 'url(/VRM342-F.jpg.webp)',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center top',
+                }} />
+                <div style={{
+                  height: 200,
+                  backgroundImage: 'url(/VRM368-F.jpg.webp)',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center top',
+                }} />
+                <div style={{
+                  height: 200,
+                  backgroundImage: 'url(/VRM450_B.jpg.webp)',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center top',
+                }} />
+              </div>
             </div>
           </div>
         </div>
@@ -456,14 +578,14 @@ function QualityControl() {
             {(availableYears.length > 0 ? availableYears : [2026, 2025, 2024, 2023, 2022])
               .sort((a, b) => b - a)
               .map((year) => (
-              <div
-                key={year}
-                className="year-card"
-                onClick={() => setSelectedYear(year)}
-              >
-                <h3>{year}</h3>
-              </div>
-            ))}
+                <div
+                  key={year}
+                  className="year-card"
+                  onClick={() => setSelectedYear(year)}
+                >
+                  <h3>{year}</h3>
+                </div>
+              ))}
           </div>
         </div>
       )}
@@ -565,11 +687,13 @@ function QualityControl() {
           {samples.length > 0 ? (
             <div className="samples-table">
               <div className="samples-table-header">
-                <div className="sample-col-number">Number</div>
-                <div className="sample-col-name">Sample Name</div>
-                <div className="sample-col-round">Round</div>
-                <div className="sample-col-type">Type</div>
-                <div className="sample-col-status">Status</div>
+                <div className="samples-table-header-inner">
+                  <div className="sample-col-number">Number</div>
+                  <div className="sample-col-name">Sample Name</div>
+                  <div className="sample-col-round">Round</div>
+                  <div className="sample-col-type">Type</div>
+                  <div className="sample-col-status">Status</div>
+                </div>
                 <div className="sample-col-actions"></div>
               </div>
               {samples
@@ -591,7 +715,7 @@ function QualityControl() {
                         </div>
                       </Link>
                       <div className="sample-col-actions">
-                        <button 
+                        <button
                           className="sample-action-btn"
                           onClick={(e) => {
                             e.preventDefault();
@@ -601,7 +725,7 @@ function QualityControl() {
                         >
                           ✎
                         </button>
-                        <button 
+                        <button
                           className="sample-action-btn sample-action-delete"
                           onClick={(e) => {
                             e.preventDefault();
@@ -615,9 +739,9 @@ function QualityControl() {
                     </div>
                   ))
               ) : (
-                <div className="samples-table-row" style={{display: 'grid', gridTemplateColumns: '80px 1.5fr 1fr 1fr 1fr 80px', alignItems: 'center', minHeight: 48, color: '#bbb'}}>
+                <div className="samples-table-row" style={{ display: 'grid', gridTemplateColumns: '80px 1.5fr 1fr 1fr 1fr 80px', alignItems: 'center', minHeight: 48, color: '#bbb' }}>
                   <div className="sample-col-number"></div>
-                  <div className="sample-col-name" style={{textAlign: 'center'}}>Geen samples gevonden voor deze status</div>
+                  <div className="sample-col-name" style={{ textAlign: 'center' }}>Geen samples gevonden voor deze status</div>
                   <div className="sample-col-round"></div>
                   <div className="sample-col-type"></div>
                   <div className="sample-col-status"></div>
@@ -627,17 +751,17 @@ function QualityControl() {
             </div>
           ) : (
             <div className="samples-table">
-              <div className="samples-table-header" style={{display: 'grid', gridTemplateColumns: '80px 1.5fr 1fr 1fr 1fr 80px', alignItems: 'center', minHeight: 48}}>
-                <div className="sample-col-number" style={{display: 'flex', alignItems: 'center', height: '100%'}}>Number</div>
-                <div className="sample-col-name" style={{display: 'flex', alignItems: 'center', height: '100%'}}>Sample Name</div>
-                <div className="sample-col-round" style={{display: 'flex', alignItems: 'center', height: '100%'}}>Round</div>
-                <div className="sample-col-type" style={{display: 'flex', alignItems: 'center', height: '100%'}}>Type</div>
-                <div className="sample-col-status" style={{display: 'flex', alignItems: 'center', height: '100%'}}>Status</div>
-                <div className="sample-col-actions" style={{display: 'flex', alignItems: 'center', height: '100%'}}></div>
+              <div className="samples-table-header" style={{ display: 'grid', gridTemplateColumns: '80px 1.5fr 1fr 1fr 1fr 80px', alignItems: 'center', minHeight: 48 }}>
+                <div className="sample-col-number" style={{ display: 'flex', alignItems: 'center', height: '100%' }}>Number</div>
+                <div className="sample-col-name" style={{ display: 'flex', alignItems: 'center', height: '100%' }}>Sample Name</div>
+                <div className="sample-col-round" style={{ display: 'flex', alignItems: 'center', height: '100%' }}>Round</div>
+                <div className="sample-col-type" style={{ display: 'flex', alignItems: 'center', height: '100%' }}>Type</div>
+                <div className="sample-col-status" style={{ display: 'flex', alignItems: 'center', height: '100%' }}>Status</div>
+                <div className="sample-col-actions" style={{ display: 'flex', alignItems: 'center', height: '100%' }}></div>
               </div>
-              <div className="samples-table-row" style={{display: 'grid', gridTemplateColumns: '80px 1.5fr 1fr 1fr 1fr 80px', alignItems: 'center', minHeight: 48, color: '#bbb'}}>
+              <div className="samples-table-row" style={{ display: 'grid', gridTemplateColumns: '80px 1.5fr 1fr 1fr 1fr 80px', alignItems: 'center', minHeight: 48, color: '#bbb' }}>
                 <div className="sample-col-number"></div>
-                <div className="sample-col-name" style={{textAlign: 'center', display: 'flex', alignItems: 'center', height: '100%'}}>Geen samples gevonden</div>
+                <div className="sample-col-name" style={{ textAlign: 'center', display: 'flex', alignItems: 'center', height: '100%' }}>Geen samples gevonden</div>
                 <div className="sample-col-round"></div>
                 <div className="sample-col-type"></div>
                 <div className="sample-col-status"></div>

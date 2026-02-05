@@ -243,19 +243,70 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
             />
           </div>
 
-          <div className="modal-actions">
+          <div className="modal-actions" style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 12,
+            marginTop: 24,
+            paddingTop: 20,
+            borderTop: '1px solid #eee',
+          }}>
             <button
               type="button"
               onClick={onClose}
-              className="button-secondary"
               disabled={submitting}
+              style={{
+                padding: '10px 20px',
+                borderRadius: 8,
+                border: '1px solid #ddd',
+                background: '#fff',
+                color: '#333',
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: submitting ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: submitting ? 0.6 : 1,
+              }}
+              onMouseEnter={(e) => {
+                if (!submitting) {
+                  e.currentTarget.style.background = '#f5f5f5';
+                  e.currentTarget.style.borderColor = '#111';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#fff';
+                e.currentTarget.style.borderColor = '#ddd';
+              }}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="button-primary"
               disabled={submitting}
+              style={{
+                padding: '10px 24px',
+                borderRadius: 8,
+                border: 'none',
+                background: submitting ? '#888' : '#111',
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: submitting ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+              onMouseEnter={(e) => {
+                if (!submitting) {
+                  e.currentTarget.style.background = '#333';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!submitting) {
+                  e.currentTarget.style.background = '#111';
+                }
+              }}
             >
               {submitting ? 'Saving...' : 'Save Changes'}
             </button>
