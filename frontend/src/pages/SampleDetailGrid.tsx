@@ -262,14 +262,14 @@ function SampleDetailGrid() {
           onMouseDown={e => handleDragStart('info', e)}
         >
           <div className="luxury-card" style={{ border: editMode ? '2px dashed #bbb' : '1px solid #eee', borderRadius: 18, background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.03)', padding: 28, height: '100%', overflow: 'auto' }}>
-            <h3 className="luxury-card-title" style={{ fontWeight: 600, fontSize: 22, letterSpacing: 1, marginBottom: 20 }}>Sample Information</h3>
+            <h3 className="luxury-card-title" style={{ fontWeight: 600, fontSize: 22, letterSpacing: 1, marginBottom: 20 }}>Style Information</h3>
             <div className="luxury-info-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px 32px' }}>
               <div>
                 <div style={{ fontSize: 13, color: '#888', marginBottom: 2 }}>Status</div>
                 <div style={{ fontWeight: 600, color: '#111' }}>{sample.status}</div>
               </div>
               <div>
-                <div style={{ fontSize: 13, color: '#888', marginBottom: 2 }}>Sample Round</div>
+                <div style={{ fontSize: 13, color: '#888', marginBottom: 2 }}>Style Round</div>
                 <div style={{ fontWeight: 600, color: '#111' }}>{sample.sample_round}</div>
               </div>
               <div>

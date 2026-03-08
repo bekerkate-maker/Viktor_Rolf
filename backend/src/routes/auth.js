@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { supabase } from '../database/supabase.js';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'viktor-rolf-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'viktor-rolf-secret-key-2024';
 
 /**
  * @route   POST /api/auth/register

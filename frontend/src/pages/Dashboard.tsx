@@ -128,7 +128,7 @@ function Dashboard() {
         <table className="table">
           <thead>
             <tr>
-              <th>Sample Code</th>
+              <th>Style Code</th>
               <th>Name</th>
               <th>Collection</th>
               <th>Status</th>
@@ -148,15 +148,14 @@ function Dashboard() {
                 <td>{sample.collection_name}</td>
                 <td>
                   <span
-                    className={`badge badge-${
-                      sample.status === 'Approved'
+                    className={`badge badge-${sample.status === 'Approved'
                         ? 'approved'
                         : sample.status === 'Rejected'
-                        ? 'rejected'
-                        : sample.status === 'Changes Needed'
-                        ? 'pending'
-                        : 'progress'
-                    }`}
+                          ? 'rejected'
+                          : sample.status === 'Changes Needed'
+                            ? 'pending'
+                            : 'progress'
+                      }`}
                   >
                     {sample.status}
                   </span>

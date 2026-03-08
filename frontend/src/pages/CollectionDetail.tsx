@@ -101,9 +101,9 @@ function CollectionDetail() {
           <table className="table">
             <thead>
               <tr>
-                <th>Sample Code</th>
+                <th>Style Code</th>
                 <th>Name</th>
-                <th>Sample Round</th>
+                <th>Style Round</th>
                 <th>Status</th>
                 <th>Responsible</th>
                 <th>QC Reviews</th>
@@ -124,15 +124,14 @@ function CollectionDetail() {
                   <td>{sample.sample_round}</td>
                   <td>
                     <span
-                      className={`badge badge-${
-                        sample.status === 'Approved'
+                      className={`badge badge-${sample.status === 'Approved'
                           ? 'approved'
                           : sample.status === 'Rejected'
-                          ? 'rejected'
-                          : sample.status === 'Changes Needed'
-                          ? 'pending'
-                          : 'progress'
-                      }`}
+                            ? 'rejected'
+                            : sample.status === 'Changes Needed'
+                              ? 'pending'
+                              : 'progress'
+                        }`}
                     >
                       {sample.status}
                     </span>

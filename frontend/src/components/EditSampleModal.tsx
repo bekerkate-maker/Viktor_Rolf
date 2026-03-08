@@ -23,6 +23,8 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [showManufacturerDropdown, setShowManufacturerDropdown] = useState(false);
+  const manufacturersList = ["5D", "Cousy", "Guay", "ABtex", "F&P"];
 
   // Populate form when sample changes
   useEffect(() => {
@@ -51,7 +53,7 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
       // Get responsible user ID from localStorage (current user)
       const userStr = localStorage.getItem('user');
       const user = userStr ? JSON.parse(userStr) : null;
-      
+
       const payload = {
         name: formData.name,
         sample_round: formData.sample_round,
@@ -64,10 +66,10 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
         tags: formData.tags,
         responsible_user_id: user?.id || sample.responsible_user_id,
       };
-      
+
       console.log('Updating sample with payload:', payload);
-      
-  await samplesAPI.update(String(sample.id), payload);
+
+      await samplesAPI.update(String(sample.id), payload);
 
       onSampleUpdated();
       onClose();
@@ -91,14 +93,14 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">Edit Sample</h2>
+          <h2 className="modal-title">Edit Style</h2>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Sample Code</label>
+              <label className="form-label">Style Code</label>
               <input
                 type="text"
                 value={sample.sample_code}
@@ -107,12 +109,12 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
                 style={{ background: '#f5f5f5', cursor: 'not-allowed' }}
               />
               <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
-                Sample code cannot be changed
+                Style code cannot be changed
               </div>
             </div>
 
             <div className="form-group">
-              <label className="form-label">Sample Name *</label>
+              <label className="form-label">Style Name *</label>
               <input
                 type="text"
                 name="name"
@@ -127,7 +129,7 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
 
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Sample Round *</label>
+              <label className="form-label">Style Round *</label>
               <select
                 name="sample_round"
                 value={formData.sample_round}
@@ -166,16 +168,64 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
           </div>
 
           <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Supplier Name</label>
+            <div
+              className="form-group"
+              style={{ position: 'relative' }}
+              onMouseEnter={() => setShowManufacturerDropdown(true)}
+              onMouseLeave={() => setShowManufacturerDropdown(false)}
+            >
+              <label className="form-label">Manufacturer</label>
               <input
                 type="text"
                 name="supplier_name"
                 value={formData.supplier_name}
                 onChange={handleChange}
+                onFocus={() => setShowManufacturerDropdown(true)}
                 className="form-input"
-                placeholder="e.g., Atelier Montaigne"
+                placeholder="Select or type a manufacturer..."
+                autoComplete="off"
               />
+              {showManufacturerDropdown && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  background: '#fff',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  zIndex: 50,
+                  marginTop: '4px',
+                  overflow: 'hidden'
+                }}>
+                  {manufacturersList.map(m => (
+                    <div
+                      key={m}
+                      style={{
+                        padding: '10px 14px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        borderBottom: '1px solid #f5f5f5',
+                        transition: 'background 0.2s',
+                        color: formData.supplier_name === m ? '#000' : '#444',
+                        fontWeight: formData.supplier_name === m ? 600 : 400,
+                        background: formData.supplier_name === m ? '#fafafa' : 'transparent'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = formData.supplier_name === m ? '#fafafa' : 'transparent';
+                      }}
+                      onClick={() => {
+                        setFormData({ ...formData, supplier_name: m });
+                        setShowManufacturerDropdown(false);
+                      }}
+                    >
+                      {m}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="form-group">
@@ -195,51 +245,15 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
             </div>
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Received Date</label>
-              <input
-                type="date"
-                name="received_date"
-                value={formData.received_date}
-                onChange={handleChange}
-                className="form-input"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Feedback Deadline</label>
-              <input
-                type="date"
-                name="feedback_deadline"
-                value={formData.feedback_deadline}
-                onChange={handleChange}
-                className="form-input"
-              />
-            </div>
-          </div>
-
           <div className="form-group">
-            <label className="form-label">Internal Notes</label>
-            <textarea
-              name="internal_notes"
-              value={formData.internal_notes}
-              onChange={handleChange}
-              className="form-textarea"
-              placeholder="Add any internal notes or comments..."
-              rows={3}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Tags</label>
+            <label className="form-label">Style Notes</label>
             <input
               type="text"
               name="tags"
               value={formData.tags}
               onChange={handleChange}
               className="form-input"
-              placeholder="e.g., urgent, special, archived (comma-separated)"
+              placeholder="e.g., specific style notes or remarks..."
             />
           </div>
 
@@ -312,8 +326,8 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }
 

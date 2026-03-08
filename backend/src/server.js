@@ -4,6 +4,13 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// Load environment variables IMMEDIATELY so they are available in routes
+dotenv.config();
+
+// Setup __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Import routes
 import authRouter from './routes/auth.js';
 import collectionsRouter from './routes/collections.js';
@@ -12,13 +19,6 @@ import qualityReviewsRouter from './routes/qualityReviews.js';
 import supplierCommRouter from './routes/supplierCommunications.js';
 import usersRouter from './routes/users.js';
 import photosRouter from './routes/photos.js';
-
-// Setup __dirname for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Load environment variables
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -48,9 +48,9 @@ app.get('/api/health', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ 
-    error: 'Something went wrong!', 
-    message: err.message 
+  res.status(500).json({
+    error: 'Something went wrong!',
+    message: err.message
   });
 });
 

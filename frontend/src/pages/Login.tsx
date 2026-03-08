@@ -20,11 +20,11 @@ function Login() {
           email: 'sophie.laurent@viktor-rolf.com',
           password: 'password123'
         });
-        
+
         // Store token and user info
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
-        
+
         // Redirect to quality control
         navigate('/quality-control');
       } catch (err) {
@@ -48,11 +48,11 @@ function Login() {
 
     try {
       const response = await axios.post('/api/auth/login', formData);
-      
+
       // Store token and user info
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
-      
+
       // Redirect to home
       navigate('/home');
     } catch (err: any) {
@@ -67,12 +67,12 @@ function Login() {
       <div className="auth-card">
         <div className="auth-header">
           <h1 className="auth-brand">VIKTOR & ROLF</h1>
-          <p className="auth-subtitle">Sample Control System</p>
+          <p className="auth-subtitle">Quality Control System</p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <h2 className="auth-title">Sign In</h2>
-          
+
           {error && <div className="auth-error">{error}</div>}
 
           <div className="form-group">
@@ -99,8 +99,8 @@ function Login() {
             />
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="btn btn-primary btn-full"
             disabled={loading}
           >

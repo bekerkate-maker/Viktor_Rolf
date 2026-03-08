@@ -86,10 +86,9 @@ function SupplierCommDetail() {
               <p className="mt-sm"><strong>Date:</strong> {new Date(comm.communication_date).toLocaleDateString()}</p>
               <p className="mt-sm">
                 <strong>Status:</strong>{' '}
-                <span className={`badge badge-${
-                  comm.status === 'Completed' ? 'approved' :
+                <span className={`badge badge-${comm.status === 'Completed' ? 'approved' :
                   comm.status === 'Waiting for Supplier' ? 'pending' : 'progress'
-                }`}>
+                  }`}>
                   {comm.status}
                 </span>
               </p>
@@ -109,7 +108,7 @@ function SupplierCommDetail() {
               <p className="mt-sm"><strong>Created:</strong> {new Date(comm.created_at).toLocaleString()}</p>
             </div>
           </div>
-          
+
           <div className="mt-lg">
             <p><strong>Summary:</strong></p>
             <p className="mt-sm" style={{ whiteSpace: 'pre-wrap' }}>{comm.summary}</p>
@@ -144,11 +143,11 @@ function SupplierCommDetail() {
       <div className="card">
         <h2 className="card-title">Related Sample</h2>
         <div className="mt-md">
-          <p><strong>Sample Code:</strong> {comm.sample_code}</p>
-          <p className="mt-sm"><strong>Sample Name:</strong> {comm.sample_name}</p>
+          <p><strong>Style Code:</strong> {comm.sample_code}</p>
+          <p className="mt-sm"><strong>Style Name:</strong> {comm.sample_name}</p>
           <p className="mt-sm"><strong>Collection:</strong> {comm.collection_name}</p>
           <Link to={`/samples/${comm.sample_id}`} className="btn mt-md">
-            View Sample Details
+            View Style Details
           </Link>
         </div>
       </div>

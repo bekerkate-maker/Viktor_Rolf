@@ -5,7 +5,7 @@ function Home() {
     <div className="home-page">
       <div className="home-hero">
         <h1 className="home-title">VIKTOR & ROLF</h1>
-        <h2 className="home-subtitle">Sample Control System</h2>
+        <h2 className="home-subtitle">Quality Control System</h2>
         <div className="home-divider"></div>
       </div>
 
@@ -13,7 +13,7 @@ function Home() {
         <section className="home-section">
           <h3>Welcome</h3>
           <p>
-            This internal system is developed for the Viktor & Rolf fashion house and is intended 
+            This internal system is developed for the Viktor & Rolf fashion house and is intended
             for use by our product developers, quality control teams, and production departments.
           </p>
         </section>
@@ -21,8 +21,8 @@ function Home() {
         <section className="home-section">
           <h3>About the System</h3>
           <p>
-            The Sample Control System provides a centralized platform for managing all quality 
-            processes within our collections. From sample tracking to detailed quality reviews 
+            The Quality Control System provides a centralized platform for managing all quality
+            processes within our collections. From sample tracking to detailed quality reviews
             and direct communication with our suppliers - everything in one place.
           </p>
         </section>
@@ -32,7 +32,7 @@ function Home() {
             <div className="module-icon">✓</div>
             <h4>Quality Control</h4>
             <p>
-              Manage quality reviews, add photos and comments, and track the status 
+              Manage quality reviews, add photos and comments, and track the status
               of samples throughout the entire development process.
             </p>
             <a href="/quality-control" className="module-link">
@@ -44,7 +44,7 @@ function Home() {
             <div className="module-icon">✉</div>
             <h4>Supplier Communications</h4>
             <p>
-              Centralize all communication with suppliers. Track messages, share attachments, 
+              Centralize all communication with suppliers. Track messages, share attachments,
               and maintain a complete overview of all correspondence.
             </p>
             <a href="/supplier-communications" className="module-link">

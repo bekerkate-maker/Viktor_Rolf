@@ -64,8 +64,8 @@ function Register() {
     setLoading(true);
 
     try {
-      const finalJobTitle = formData.job_title === 'Other' 
-        ? formData.custom_job_title 
+      const finalJobTitle = formData.job_title === 'Other'
+        ? formData.custom_job_title
         : formData.job_title;
 
       const response = await axios.post('/api/auth/register', {
@@ -75,11 +75,11 @@ function Register() {
         password: formData.password,
         job_title: finalJobTitle
       });
-      
+
       // Store token and user info
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
-      
+
       // Redirect to home
       navigate('/home');
     } catch (err: any) {
@@ -94,12 +94,12 @@ function Register() {
       <div className="auth-card auth-card-wide">
         <div className="auth-header">
           <h1 className="auth-brand">VIKTOR & ROLF</h1>
-          <p className="auth-subtitle">Sample Control System</p>
+          <p className="auth-subtitle">Quality Control System</p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <h2 className="auth-title">Create Account</h2>
-          
+
           {error && <div className="auth-error">{error}</div>}
 
           <div className="form-row">
@@ -195,8 +195,8 @@ function Register() {
             </div>
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="btn btn-primary btn-full"
             disabled={loading}
           >

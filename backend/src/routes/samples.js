@@ -10,7 +10,7 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const { collection_id, status } = req.query;
-    
+
     let query = supabase
       .from('samples')
       .select(`
@@ -24,13 +24,13 @@ router.get('/', async (req, res) => {
     if (collection_id) {
       query = query.eq('collection_id', collection_id);
     }
-    
+
     if (status) {
       query = query.eq('status', status);
     }
 
-  // Sorteer op sample_code oplopend zodat 1 bovenaan staat
-  query = query.order('sample_code', { ascending: true });
+    // Sorteer op sample_code oplopend zodat 1 bovenaan staat
+    query = query.order('sample_code', { ascending: true });
 
     const { data: samples, error } = await query;
 
@@ -43,8 +43,8 @@ router.get('/', async (req, res) => {
       season: s.collection?.season,
       year: s.collection?.year,
       collection_type: s.collection?.category,
-      responsible_user_name: s.responsible_user 
-        ? `${s.responsible_user.first_name} ${s.responsible_user.last_name}` 
+      responsible_user_name: s.responsible_user
+        ? `${s.responsible_user.first_name} ${s.responsible_user.last_name}`
         : null,
       quality_review_count: s.quality_reviews?.length || 0,
       supplier_comm_count: s.supplier_communications?.length || 0
@@ -130,27 +130,27 @@ router.get('/:id', async (req, res) => {
       season: sample.collection?.season,
       year: sample.collection?.year,
       collection_type: sample.collection?.category,
-      responsible_user_name: sample.responsible_user 
-        ? `${sample.responsible_user.first_name} ${sample.responsible_user.last_name}` 
+      responsible_user_name: sample.responsible_user
+        ? `${sample.responsible_user.first_name} ${sample.responsible_user.last_name}`
         : null,
       responsible_user_email: sample.responsible_user?.email,
       quality_reviews: qualityReviewsWithRound.map(qr => ({
         ...qr,
-        reviewer_name: qr.reviewer 
-          ? `${qr.reviewer.first_name} ${qr.reviewer.last_name}` 
+        reviewer_name: qr.reviewer
+          ? `${qr.reviewer.first_name} ${qr.reviewer.last_name}`
           : null,
         reviewer_email: qr.reviewer?.email
       })),
       supplier_communications: supplierComms.map(sc => ({
         ...sc,
-        created_by_name: sc.created_by_user 
-          ? `${sc.created_by_user.first_name} ${sc.created_by_user.last_name}` 
+        created_by_name: sc.created_by_user
+          ? `${sc.created_by_user.first_name} ${sc.created_by_user.last_name}`
           : null
       })),
       audit_trail: auditTrail.map(at => ({
         ...at,
-        user_name: at.user 
-          ? `${at.user.first_name} ${at.user.last_name}` 
+        user_name: at.user
+          ? `${at.user.first_name} ${at.user.last_name}`
           : null
       }))
     };
@@ -168,14 +168,14 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    const { 
-      collection_id, 
-      sample_code, 
-      name, 
+    const {
+      collection_id,
+      sample_code,
+      name,
       sample_round,
       product_type,
       supplier_name,
-      status, 
+      status,
       responsible_user_id,
       received_date,
       feedback_deadline,
@@ -193,13 +193,13 @@ router.post('/', async (req, res) => {
     const { data: sample, error } = await supabase
       .from('samples')
       .insert({
-        collection_id, 
-        sample_code, 
-        name, 
+        collection_id,
+        sample_code,
+        name,
         sample_round: sample_round || 'Proto',
         product_type: product_type || 'Other',
         supplier_name: supplier_name || '',
-        status: status || 'In Review', 
+        status: status || 'In Review',
         responsible_user_id,
         received_date: received_date || null,
         feedback_deadline: feedback_deadline || null,
@@ -238,27 +238,27 @@ router.post('/', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
   try {
-    const { 
-      name, 
+    const {
+      name,
       sample_round,
       product_type,
       supplier_name,
-      status, 
+      status,
       responsible_user_id,
       received_date,
       feedback_deadline,
       internal_notes,
       tags,
-      user_id 
+      user_id
     } = req.body;
-    
+
     // Get old sample for audit trail
     const { data: oldSample, error: fetchError } = await supabase
       .from('samples')
       .select('*')
       .eq('id', req.params.id)
       .single();
-    
+
     if (fetchError || !oldSample) {
       return res.status(404).json({ error: 'Sample not found' });
     }
@@ -312,13 +312,32 @@ router.put('/:id', async (req, res) => {
  */
 router.delete('/:id', async (req, res) => {
   try {
+    const sampleId = req.params.id;
+
+    console.log('Attempting to delete sample and related records:', sampleId);
+
+    // Manually cascade deletes to avoid foreign key constraint errors
+    // 1. Delete Photos
+    await supabase.from('sample_photos').delete().eq('sample_id', sampleId);
+
+    // 2. Delete Quality Reviews
+    await supabase.from('quality_reviews').delete().eq('sample_id', sampleId);
+
+    // 3. Delete Supplier Communications
+    await supabase.from('supplier_communications').delete().eq('sample_id', sampleId);
+
+    // 4. Delete Audit Trail entries
+    await supabase.from('audit_trail').delete().eq('entity_id', sampleId).eq('entity_type', 'sample');
+
+    // 5. Finally delete the sample itself
     const { error } = await supabase
       .from('samples')
       .delete()
-      .eq('id', req.params.id);
+      .eq('id', sampleId);
 
     if (error) throw error;
 
+    console.log('Sample and related records deleted successfully');
     res.json({ message: 'Sample deleted successfully' });
   } catch (error) {
     console.error('Error deleting sample:', error);
@@ -358,11 +377,11 @@ router.get('/:id/audit-trail', async (req, res) => {
 
     // Build OR filter for all related entities
     const orFilters = [`and(entity_type.eq.sample,entity_id.eq.${req.params.id})`];
-    
+
     if (qualityReviewIds.length > 0) {
       orFilters.push(`and(entity_type.eq.quality_review,entity_id.in.(${qualityReviewIds.join(',')}))`);
     }
-    
+
     if (supplierCommIds.length > 0) {
       orFilters.push(`and(entity_type.eq.supplier_communication,entity_id.in.(${supplierCommIds.join(',')}))`);
     }
@@ -377,8 +396,8 @@ router.get('/:id/audit-trail', async (req, res) => {
     // Transform data
     const transformedAuditTrail = auditTrail.map(at => ({
       ...at,
-      user_name: at.user 
-        ? `${at.user.first_name} ${at.user.last_name}` 
+      user_name: at.user
+        ? `${at.user.first_name} ${at.user.last_name}`
         : null,
       user_email: at.user?.email
     }));

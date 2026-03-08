@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 interface LayoutProps {
@@ -17,6 +17,7 @@ function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const menuRef = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
@@ -25,7 +26,26 @@ function Layout({ children }: LayoutProps) {
     }
   }, []);
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [menuRef]);
+
   const isActive = (path: string) => {
+    if (path === '/quality-control') {
+      return location.pathname.startsWith('/quality-control') ||
+        location.pathname.startsWith('/samples') ||
+        location.pathname.startsWith('/collections')
+        ? 'active' : '';
+    }
     return location.pathname.startsWith(path) ? 'active' : '';
   };
 
@@ -42,7 +62,7 @@ function Layout({ children }: LayoutProps) {
           <Link to="/home" style={{ textDecoration: 'none', color: 'inherit' }}>
             <div>
               <h1>VIKTOR & ROLF</h1>
-              <div className="nav-brand-subtitle">Sample Control System</div>
+              <div className="nav-brand-subtitle">Quality Control System</div>
             </div>
           </Link>
         </div>
@@ -58,8 +78,8 @@ function Layout({ children }: LayoutProps) {
             </Link>
           </li>
           {user && (
-            <li className="user-menu-container">
-              <button 
+            <li className="user-menu-container" ref={menuRef}>
+              <button
                 className="user-menu-button"
                 onClick={() => setShowUserMenu(!showUserMenu)}
               >
@@ -86,8 +106,8 @@ function Layout({ children }: LayoutProps) {
           )}
         </ul>
       </nav>
-      <main className="main-layout" style={{padding: 0, maxWidth: 'none'}}>
-        <div className="main-content" style={{maxWidth: 'none', padding: 0}}>{children}</div>
+      <main className="main-layout" style={{ padding: 0, maxWidth: 'none' }}>
+        <div className="main-content" style={{ maxWidth: 'none', padding: 0 }}>{children}</div>
       </main>
     </div>
   );

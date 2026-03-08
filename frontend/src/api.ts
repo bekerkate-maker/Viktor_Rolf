@@ -40,6 +40,36 @@ const ensureToken = async (): Promise<string | null> => {
   return token;
 };
 
+// Request interceptor om altijd de token toe te voegen
+api.interceptors.request.use(async (config) => {
+  const token = await ensureToken();
+  if (token && config.headers) {
+    if (typeof config.headers.set === 'function') {
+      config.headers.set('Authorization', `Bearer ${token}`);
+    } else {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
+// Response interceptor om in te grijpen bij 401 Unauthorized
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      console.error('API returned 401. Clearing token and forcing re-login...');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Optioneel: redirect naar de login pagina, of herlaad zodat auto-login wekt
+      window.location.reload();
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Collections
 export const collectionsAPI = {
   getAll: () => api.get<Collection[]>('/collections'),
@@ -133,10 +163,24 @@ export const photosAPI = {
     });
   },
   getPhotos: (sampleId: string) => api.get(`/photos/samples/${sampleId}`),
-  setMainPhoto: (photoId: number) => api.put(`/photos/${photoId}/set-main`),
-  updateOrder: (photoId: number, display_order: number) => 
-    api.put(`/photos/${photoId}/order`, { display_order }),
-  deletePhoto: (photoId: number) => api.delete(`/photos/${photoId}`),
+  setMainPhoto: async (photoId: number) => {
+    const token = await ensureToken();
+    return api.put(`/photos/${photoId}/set-main`, {}, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+  },
+  updateOrder: async (photoId: number, display_order: number) => {
+    const token = await ensureToken();
+    return api.put(`/photos/${photoId}/order`, { display_order }, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+  },
+  deletePhoto: async (photoId: number) => {
+    const token = await ensureToken();
+    return api.delete(`/photos/${photoId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+  },
 };
 
 export default api;

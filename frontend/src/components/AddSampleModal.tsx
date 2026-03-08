@@ -11,7 +11,7 @@ interface AddSampleModalProps {
 
 function AddSampleModal({ isOpen, onClose, collections, onSampleAdded }: AddSampleModalProps) {
   const [formData, setFormData] = useState({
-    collection_id: 0,
+    collection_id: '' as string | number,
     sample_number: '',
     name: '',
     sample_round: 'Proto' as 'Proto' | 'SMS' | 'PPS' | 'Final',
@@ -29,10 +29,13 @@ function AddSampleModal({ isOpen, onClose, collections, onSampleAdded }: AddSamp
   // Update collection_id when collections change or modal opens
   useEffect(() => {
     if (isOpen && collections.length > 0) {
-      setFormData(prev => ({
-        ...prev,
-        collection_id: collections[0].id
-      }));
+      // If the current collection_id is not in the list (including initial 0/''), pick the first one
+      if (!collections.some(c => c.id === formData.collection_id)) {
+        setFormData(prev => ({
+          ...prev,
+          collection_id: collections[0].id
+        }));
+      }
     }
   }, [isOpen, collections]);
 
@@ -42,7 +45,7 @@ function AddSampleModal({ isOpen, onClose, collections, onSampleAdded }: AddSamp
   const generateSampleCode = () => {
     const collection = collections.find(c => c.id === formData.collection_id);
     if (!collection || !formData.sample_number) return '';
-    
+
     // Get season code (SS/FW)
     const seasonCode = collection.season;
     // Get year last 2 digits
@@ -51,7 +54,7 @@ function AddSampleModal({ isOpen, onClose, collections, onSampleAdded }: AddSamp
     let categoryCode = 'RTW';
     if (collection.category === 'Haute Couture') categoryCode = 'HC';
     if (collection.category === 'Mariage') categoryCode = 'MAR';
-    
+
     // Format: SS26-RTW-001
     return `${seasonCode}${yearCode}-${categoryCode}-${formData.sample_number.padStart(3, '0')}`;
   };
@@ -64,10 +67,10 @@ function AddSampleModal({ isOpen, onClose, collections, onSampleAdded }: AddSamp
       // Get responsible user ID from localStorage (current user)
       const userStr = localStorage.getItem('user');
       const user = userStr ? JSON.parse(userStr) : null;
-      
+
       // Generate the sample code
       const sample_code = generateSampleCode();
-      
+
       const payload = {
         collection_id: formData.collection_id,
         sample_code,
@@ -76,21 +79,22 @@ function AddSampleModal({ isOpen, onClose, collections, onSampleAdded }: AddSamp
         product_type: formData.product_type,
         supplier_name: formData.supplier_name,
         status: formData.status,
-        received_date: formData.received_date,
-        feedback_deadline: formData.feedback_deadline,
+        received_date: formData.received_date || null,
+        feedback_deadline: formData.feedback_deadline || null,
         internal_notes: formData.internal_notes,
         tags: formData.tags,
-        responsible_user_id: user?.id || 1,
+        // CRITICAL: Supabase uses UUIDs. Sending '1' as a number will fail with 500.
+        // We use the logged-in user's ID, or null if not available.
+        responsible_user_id: user?.id || null,
       };
-      
+
       console.log('Creating sample with payload:', payload);
-      console.log('Available collections:', collections);
-      
-      await samplesAPI.create(payload);
+
+      await samplesAPI.create(payload as any);
 
       onSampleAdded();
       onClose();
-      
+
       // Reset form - keep the collection_id
       setFormData({
         collection_id: collections[0]?.id || formData.collection_id,
@@ -106,9 +110,11 @@ function AddSampleModal({ isOpen, onClose, collections, onSampleAdded }: AddSamp
         tags: '',
       });
     } catch (error: any) {
-      console.error('Error creating sample:', error);
+      console.error('Error creating sample details:', error);
       const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
-      alert(`Failed to create sample: ${errorMessage}\n\nCheck console for details.`);
+      // Logs actual error details which helped identifying the 500 error
+      console.error('Full server error:', error.response?.data);
+      alert(`Failed to create sample: ${errorMessage}`);
     } finally {
       setSubmitting(false);
     }
@@ -151,7 +157,7 @@ function AddSampleModal({ isOpen, onClose, collections, onSampleAdded }: AddSamp
             </div>
 
             <div className="form-group">
-              <label className="form-label">Sample Name *</label>
+              <label className="form-label">Style Name *</label>
               <input
                 type="text"
                 name="name"
@@ -166,7 +172,7 @@ function AddSampleModal({ isOpen, onClose, collections, onSampleAdded }: AddSamp
 
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Sample Round *</label>
+              <label className="form-label">Style Round *</label>
               <select
                 name="sample_round"
                 value={formData.sample_round}
@@ -235,51 +241,15 @@ function AddSampleModal({ isOpen, onClose, collections, onSampleAdded }: AddSamp
             </div>
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Received Date</label>
-              <input
-                type="date"
-                name="received_date"
-                value={formData.received_date}
-                onChange={handleChange}
-                className="form-input"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Feedback Deadline</label>
-              <input
-                type="date"
-                name="feedback_deadline"
-                value={formData.feedback_deadline}
-                onChange={handleChange}
-                className="form-input"
-              />
-            </div>
-          </div>
-
           <div className="form-group">
-            <label className="form-label">Internal Notes</label>
-            <textarea
-              name="internal_notes"
-              value={formData.internal_notes}
-              onChange={handleChange}
-              className="form-input"
-              rows={3}
-              placeholder="Add any internal notes..."
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Tags</label>
+            <label className="form-label">Style Notes</label>
             <input
               type="text"
               name="tags"
               value={formData.tags}
               onChange={handleChange}
               className="form-input"
-              placeholder="e.g., urgent, rework, final-check (comma-separated)"
+              placeholder="e.g., specific style notes or remarks..."
             />
           </div>
 

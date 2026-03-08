@@ -14,19 +14,19 @@ import './App.css';
 
 function App() {
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         {/* Public routes - no layout */}
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        
+
         {/* Protected routes - with layout */}
         <Route path="/home" element={<Layout><Home /></Layout>} />
         <Route path="/collections" element={<Layout><Collections /></Layout>} />
         <Route path="/collections/:id" element={<Layout><CollectionDetail /></Layout>} />
-  <Route path="/samples/:id" element={<Layout><SampleDetail /></Layout>} />
-  <Route path="/collections/:collectionId/samples/:id" element={<Layout><SampleDetail /></Layout>} />
+        <Route path="/samples/:id" element={<Layout><SampleDetail /></Layout>} />
+        <Route path="/collections/:collectionId/samples/:id" element={<Layout><SampleDetail /></Layout>} />
         <Route path="/quality-control" element={<Layout><QualityControl /></Layout>} />
         <Route path="/quality-control/:category/:year/:season" element={<Layout><QualityControl /></Layout>} />
         <Route path="/quality-reviews/:id" element={<Layout><QualityReviewDetail /></Layout>} />

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Sample } from '../types';
-import { X } from 'lucide-react';
+import { X, Pencil, Save } from 'lucide-react';
+import { samplesAPI } from '../api';
 
 // Simuleer huidige gebruiker (in productie: haal uit auth)
 const CURRENT_USER = 'Sophie Laurent';
@@ -12,111 +13,188 @@ interface NoteEntry {
 }
 
 const InternalNotesSection: React.FC<{ sample: Sample }> = ({ sample }) => {
-  // Simuleer bestaande notes als array (in productie: uit backend)
-  const [noteEntries, setNoteEntries] = useState<NoteEntry[]>(sample.internal_notes_thread || []);
-  const [noteText, setNoteText] = useState('');
+  // Parse possible JSON structure from internal_notes
+  let extractedNote = sample.internal_notes || '';
+  try {
+    const parsed = JSON.parse(sample.internal_notes || '{}');
+    if (parsed && typeof parsed === 'object' && parsed._isJsonBlob) {
+      extractedNote = parsed.notes || '';
+    }
+  } catch (e) {
+    // Normal text note
+  }
+
+  const initialNote = extractedNote ? {
+    text: extractedNote,
+    author: CURRENT_USER,
+    date: new Date().toLocaleString('nl-NL', { dateStyle: 'short', timeStyle: 'short' }),
+  } : null;
+
+  const [savedNote, setSavedNote] = useState<NoteEntry | null>(initialNote);
+  const [noteText, setNoteText] = useState(initialNote ? initialNote.text : '');
+  const [isEditing, setIsEditing] = useState(!initialNote);
   const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!noteText.trim()) return;
     setSaving(true);
-    const newEntry: NoteEntry = {
-      text: noteText,
-      author: CURRENT_USER,
-      date: new Date().toLocaleString('nl-NL', { dateStyle: 'short', timeStyle: 'short' }),
-    };
-    setTimeout(() => {
-      setNoteEntries([newEntry, ...noteEntries]);
-      setNoteText('');
+
+    try {
+      // Haal evt. de bestaande checklist op tegelijk
+      let finalNotes = noteText;
+      try {
+        const parsed = JSON.parse(sample.internal_notes || '{}');
+        if (parsed && typeof parsed === 'object' && parsed._isJsonBlob) {
+          parsed.notes = noteText;
+          finalNotes = JSON.stringify(parsed);
+        } else {
+          finalNotes = JSON.stringify({ _isJsonBlob: true, notes: noteText, fitChecks: {}, workChecks: {} });
+        }
+      } catch (e) {
+        finalNotes = JSON.stringify({ _isJsonBlob: true, notes: noteText, fitChecks: {}, workChecks: {} });
+      }
+
+      await samplesAPI.update(String(sample.id), {
+        internal_notes: finalNotes
+      });
+
+      const newEntry: NoteEntry = {
+        text: noteText,
+        author: CURRENT_USER,
+        date: new Date().toLocaleString('nl-NL', { dateStyle: 'short', timeStyle: 'short' }),
+      };
+
+      setSavedNote(newEntry);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to save notes:', error);
+      alert('Failed to save notes to the server.');
+    } finally {
       setSaving(false);
-      // In productie: API call om op te slaan
-    }, 500);
+    }
   };
 
-  const handleDelete = (idx: number) => {
-    setNoteEntries(noteEntries.filter((_, i) => i !== idx));
-    // In productie: API call om te verwijderen
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm("Are you sure you want to delete these notes?")) {
+      try {
+        let finalNotes = '';
+        try {
+          const parsed = JSON.parse(sample.internal_notes || '{}');
+          if (parsed && typeof parsed === 'object' && parsed._isJsonBlob) {
+            parsed.notes = '';
+            finalNotes = JSON.stringify(parsed);
+          }
+        } catch (e) { }
+
+        await samplesAPI.update(String(sample.id), {
+          internal_notes: finalNotes
+        });
+        setSavedNote(null);
+        setNoteText('');
+        setIsEditing(true);
+      } catch (error) {
+        console.error('Failed to delete notes:', error);
+        alert('Failed to delete notes from the server.');
+      }
+    }
   };
 
   return (
     <div>
-      <textarea
-        className="form-textarea"
-        value={noteText}
-        onChange={e => setNoteText(e.target.value)}
-        placeholder="Decision after fitting, notes for next round, alignment with design…"
-        rows={4}
-        style={{marginBottom: 8}}
-      />
-      <div style={{display:'flex',alignItems:'center',gap:12, marginBottom: 18}}>
-        <button
-          className="btn luxury-btn"
-          style={{padding: '8px 20px', borderRadius: 8, fontWeight: 500, background: '#222', color: '#fff', border: 'none', opacity: saving ? 0.7 : 1, cursor: saving ? 'not-allowed' : 'pointer'}}
-          onClick={handleSave}
-          disabled={saving || !noteText.trim()}
-        >
-          {saving ? 'Saving…' : 'Save'}
-        </button>
-      </div>
-      {/* Timeline van notes */}
-      <div style={{marginTop: 8, display: 'flex', flexDirection: 'column', gap: 18}}>
-        {noteEntries.length === 0 ? (
-          <div style={{textAlign: 'center', color: '#bbb', fontSize: 15, padding: 24}}>
-            <span style={{fontSize: 22, opacity: 0.5, marginRight: 8}}>📝</span>
-            No notes yet
-          </div>
-        ) : (
-          noteEntries.map((entry, idx) => (
-            <div
-              key={idx}
-              style={{
-                background: '#fafbfc',
-                border: '1px solid #eee',
-                borderRadius: 10,
-                padding: '14px 18px',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
-                position: 'relative',
-                transition: 'box-shadow 0.2s',
+      {isEditing ? (
+        <div>
+          <textarea
+            className="form-textarea"
+            value={noteText}
+            onChange={e => setNoteText(e.target.value)}
+            placeholder="Decision after fitting, notes for next round, alignment with design…"
+            rows={5}
+            style={{ marginBottom: 16, width: '100%', boxSizing: 'border-box' }}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              className="btn luxury-btn"
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', borderRadius: 8, fontWeight: 500, background: '#111', color: '#fff', border: 'none', opacity: saving ? 0.7 : 1, cursor: saving ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
+              onClick={handleSave}
+              disabled={saving || !noteText.trim()}
+              onMouseEnter={(e) => {
+                if (!saving && noteText.trim()) e.currentTarget.style.background = '#333';
               }}
-              className="luxury-note-row"
-              onMouseEnter={e => {
-                const btn = e.currentTarget.querySelector('.delete-note-btn');
-                if (btn) (btn as HTMLElement).style.opacity = '1';
-              }}
-              onMouseLeave={e => {
-                const btn = e.currentTarget.querySelector('.delete-note-btn');
-                if (btn) (btn as HTMLElement).style.opacity = '0';
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#111';
               }}
             >
-              <div style={{fontSize: 15, color: '#222', marginBottom: 6, whiteSpace: 'pre-line'}}>{entry.text}</div>
-              <div style={{fontSize: 12, color: '#888', display: 'flex', alignItems: 'center', gap: 10}}>
-                <span style={{fontWeight: 500}}>{entry.author}</span>
-                <span style={{fontSize: 11, color: '#bbb'}}>{entry.date}</span>
-              </div>
+              <Save size={16} />
+              {saving ? 'Saving…' : 'Save Notes'}
+            </button>
+            {savedNote && (
               <button
-                className="delete-note-btn"
-                style={{
-                  position: 'absolute',
-                  top: 10,
-                  right: 10,
-                  background: 'none',
-                  border: 'none',
-                  color: '#bbb',
-                  cursor: 'pointer',
-                  opacity: 0,
-                  transition: 'opacity 0.2s',
-                  padding: 2,
-                  zIndex: 2,
+                style={{ padding: '10px 24px', borderRadius: 8, fontWeight: 500, background: '#fff', color: '#555', border: '1px solid #ddd', cursor: 'pointer', transition: 'all 0.2s' }}
+                onClick={() => {
+                  setNoteText(savedNote.text); // revert
+                  setIsEditing(false);
                 }}
-                onClick={() => handleDelete(idx)}
-                title="Verwijder deze notitie"
+                onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
               >
-                <X size={18} />
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div
+          style={{
+            background: '#fafbfc',
+            border: '1px solid #eee',
+            borderRadius: 12,
+            padding: '20px 24px',
+            position: 'relative',
+          }}
+          className="luxury-note-row"
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: '50%', background: '#e9ecef', color: '#111', fontWeight: 600, fontSize: 13 }}>
+                {savedNote?.author.split(' ').map(n => n[0]).join('')}
+              </span>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#111' }}>{savedNote?.author}</div>
+                <div style={{ fontSize: 12, color: '#888' }}>{savedNote?.date}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 6, background: '#fff', border: '1px solid #ddd', color: '#333', cursor: 'pointer', fontSize: 13, fontWeight: 500, transition: 'all 0.2s' }}
+                onClick={handleEdit}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#f5f5f5'; e.currentTarget.style.borderColor = '#111'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#ddd'; }}
+              >
+                <Pencil size={14} />
+                Edit
+              </button>
+              <button
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 6, background: '#fff', border: '1px solid #ddd', color: '#e53935', cursor: 'pointer', transition: 'all 0.2s' }}
+                onClick={handleDelete}
+                title="Delete note"
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#ffeeee'; e.currentTarget.style.borderColor = '#e53935'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#ddd'; }}
+              >
+                <X size={16} />
               </button>
             </div>
-          ))
-        )}
-      </div>
+          </div>
+
+          <div style={{ fontSize: 15, color: '#222', lineHeight: 1.6, whiteSpace: 'pre-line', paddingLeft: 44 }}>
+            {savedNote?.text}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

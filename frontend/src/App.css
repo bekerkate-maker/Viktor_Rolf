@@ -867,7 +867,7 @@
   margin-bottom: var(--spacing-2xl);
 }
 
-.samples-header-with-add > div {
+.samples-header-with-add>div {
   flex: 1;
 }
 
@@ -885,8 +885,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-  transition: all 0.18s cubic-bezier(.4,0,.2,1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  transition: all 0.18s cubic-bezier(.4, 0, .2, 1);
   flex-shrink: 0;
   margin-top: 0;
 }
@@ -895,7 +895,7 @@
   background: #f7f7f7;
   color: var(--vr-gold);
   border-color: var(--vr-gold);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
   transform: scale(1.08);
 }
 
@@ -1054,13 +1054,12 @@
   top: 10%;
   bottom: 10%;
   width: 2px;
-  background: linear-gradient(to bottom, 
-    transparent 0%, 
-    var(--vr-gray) 20%, 
-    var(--vr-gray) 50%, 
-    var(--vr-gray) 80%, 
-    transparent 100%
-  );
+  background: linear-gradient(to bottom,
+      transparent 0%,
+      var(--vr-gray) 20%,
+      var(--vr-gray) 50%,
+      var(--vr-gray) 80%,
+      transparent 100%);
 }
 
 .season-bar-details {
@@ -1330,7 +1329,7 @@
 
 .samples-table-header-inner {
   display: grid;
-  grid-template-columns: 100px 1fr 150px 150px 180px;
+  grid-template-columns: 130px 1fr 150px 150px 180px;
   gap: var(--spacing-md);
   padding: var(--spacing-xl);
   align-items: center;
@@ -1359,7 +1358,7 @@
 
 .sample-row-link {
   display: grid;
-  grid-template-columns: 100px 1fr 150px 150px 180px;
+  grid-template-columns: 130px 1fr 150px 150px 180px;
   gap: var(--spacing-md);
   padding: var(--spacing-xl);
   text-decoration: none;
@@ -1785,5 +1784,43 @@
   .modal-content {
     width: 95%;
     max-height: 95vh;
+  }
+}
+
+/* =========================================
+   PRINT PREFERENCES FOR QC PDF DOWNLOAD
+   ========================================= */
+@media print {
+  @page {
+    margin: 10mm;
+  }
+
+  /* Hide navigation, background, and UI buttons */
+  .top-nav,
+  .no-print,
+  button,
+  .user-menu-container {
+    display: none !important;
+  }
+
+  body,
+  .main-layout,
+  .main-content {
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .luxury-card {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    break-inside: avoid;
+  }
+
+  /* Force background colors to show in print (like status badges) */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
