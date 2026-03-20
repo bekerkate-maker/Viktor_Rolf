@@ -4,8 +4,8 @@ function SupplierCommunications() {
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title">Supplier Communications</h1>
-        <p className="page-subtitle">Track all communications with suppliers</p>
+        <h1 className="page-title">Manufacturer Communications</h1>
+        <p className="page-subtitle">Track all communications with manufacturers</p>
       </div>
 
       <div className="under-construction">

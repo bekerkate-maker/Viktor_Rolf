@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import InternalNotesSection from '../components/InternalNotesSection';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { samplesAPI, photosAPI } from '../api';
 import type { Sample, SamplePhoto } from '../types';
 import { getStatusBadge } from '../components/SampleHeader';
@@ -23,6 +23,7 @@ const defaultLayout: WidgetConfig[] = [
 
 function SampleDetailGrid() {
   const params = useParams<{ id: string; collectionId?: string }>();
+  const navigate = useNavigate();
   const id = params.id;
   const [sample, setSample] = useState<Sample | null>(null);
   const [photos, setPhotos] = useState<SamplePhoto[]>([]);
@@ -157,32 +158,60 @@ function SampleDetailGrid() {
   return (
     <div style={{ width: '100vw', minHeight: '100vh', background: '#faf9f8', padding: 0 }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 32, marginBottom: 24, padding: '32px 5vw 0 5vw' }}>
-        <div style={{ fontWeight: 700, fontSize: 36, letterSpacing: 1.5, color: '#111', wordBreak: 'break-word' }}>
-          {sample.sample_code.split('-').pop()} — {sample.name}
-        </div>
-        <div>{getStatusBadge(sample.status)}</div>
-        <button
-          onClick={() => setEditMode(e => !e)}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, padding: '32px 5vw 0 5vw', marginBottom: 24 }}>
+        <div
+          onClick={() => navigate(-1)}
           style={{
-            padding: '10px 22px',
-            borderRadius: 10,
-            fontWeight: 600,
-            background: editMode ? '#222' : '#f5f5f5',
-            color: editMode ? '#fff' : '#222',
-            border: '1.5px solid #ddd',
-            marginLeft: 24,
-            display: 'flex',
+            fontSize: '10px',
+            fontWeight: 700,
+            letterSpacing: '2px',
+            color: '#999',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+            marginBottom: 48,
+            display: 'inline-flex',
             alignItems: 'center',
-            gap: 8,
-            fontSize: 16,
-            boxShadow: editMode ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-            transition: 'all 0.2s',
+            gap: 4,
+            transition: 'color 0.2s',
+            width: 'fit-content'
           }}
+          onMouseEnter={(e) => e.currentTarget.style.color = '#111'}
+          onMouseLeave={(e) => e.currentTarget.style.color = '#999'}
         >
-          {editMode ? <Lock size={18} /> : <Unlock size={18} />}
-          {editMode ? 'Vergrendel layout' : 'Bewerk layout'}
-        </button>
+          ← Back
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 32 }}>
+          <div style={{ fontWeight: 300, fontSize: 48, letterSpacing: -0.5, color: '#111', wordBreak: 'break-word', lineHeight: 1.1 }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '2.5px', color: '#999', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
+              {sample.sample_code}
+            </span>
+            {sample.name}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+            <div>{getStatusBadge(sample.status)}</div>
+            <button
+              onClick={() => setEditMode(e => !e)}
+              style={{
+                padding: '10px 22px',
+                borderRadius: 10,
+                fontWeight: 600,
+                background: editMode ? '#222' : '#f5f5f5',
+                color: editMode ? '#fff' : '#222',
+                border: '1.5px solid #ddd',
+                marginLeft: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: 16,
+                boxShadow: editMode ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.2s',
+              }}
+            >
+              {editMode ? <Lock size={18} /> : <Unlock size={18} />}
+              {editMode ? 'Vergrendel layout' : 'Bewerk layout'}
+            </button>
+          </div>
+        </div>
       </div>
       {editMode && (
         <div style={{ padding: '0 5vw', marginBottom: 16 }}>
@@ -267,10 +296,6 @@ function SampleDetailGrid() {
               <div>
                 <div style={{ fontSize: 13, color: '#888', marginBottom: 2 }}>Status</div>
                 <div style={{ fontWeight: 600, color: '#111' }}>{sample.status}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 13, color: '#888', marginBottom: 2 }}>Style Round</div>
-                <div style={{ fontWeight: 600, color: '#111' }}>{sample.sample_round}</div>
               </div>
               <div>
                 <div style={{ fontSize: 13, color: '#888', marginBottom: 2 }}>Type</div>

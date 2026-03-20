@@ -12,7 +12,6 @@ interface EditSampleModalProps {
 function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampleModalProps) {
   const [formData, setFormData] = useState({
     name: '',
-    sample_round: 'Proto' as 'Proto' | 'SMS' | 'PPS' | 'Final',
     product_type: 'Dress' as 'Jacket' | 'Dress' | 'Pants' | 'Corset' | 'Knit' | 'Shirt' | 'Coat' | 'Skirt' | 'Top' | 'Other',
     supplier_name: '',
     status: 'In Review' as 'In Review' | 'Changes Needed' | 'Approved' | 'Rejected',
@@ -24,14 +23,13 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
 
   const [submitting, setSubmitting] = useState(false);
   const [showManufacturerDropdown, setShowManufacturerDropdown] = useState(false);
-  const manufacturersList = ["5D", "Cousy", "Guay", "ABtex", "F&P"];
+  const manufacturersList = ["Cousy", "ABtex", "Guay", "F&P", "5D", "AESSE"];
 
   // Populate form when sample changes
   useEffect(() => {
     if (isOpen && sample) {
       setFormData({
         name: sample.name || '',
-        sample_round: (sample.sample_round || 'Proto') as 'Proto' | 'SMS' | 'PPS' | 'Final',
         product_type: (sample.product_type || 'Dress') as 'Jacket' | 'Dress' | 'Pants' | 'Corset' | 'Knit' | 'Shirt' | 'Coat' | 'Skirt' | 'Top' | 'Other',
         supplier_name: sample.supplier_name || '',
         status: (sample.status || 'In Review') as 'In Review' | 'Changes Needed' | 'Approved' | 'Rejected',
@@ -56,7 +54,6 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
 
       const payload = {
         name: formData.name,
-        sample_round: formData.sample_round,
         product_type: formData.product_type,
         supplier_name: formData.supplier_name,
         status: formData.status,
@@ -93,14 +90,14 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">Edit Style</h2>
+          <h2 className="modal-title">Edit Article</h2>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Style Code</label>
+              <label className="form-label">Article Number</label>
               <input
                 type="text"
                 value={sample.sample_code}
@@ -109,12 +106,12 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
                 style={{ background: '#f5f5f5', cursor: 'not-allowed' }}
               />
               <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
-                Style code cannot be changed
+                Article number cannot be changed
               </div>
             </div>
 
             <div className="form-group">
-              <label className="form-label">Style Name *</label>
+              <label className="form-label">Article Description *</label>
               <input
                 type="text"
                 name="name"
@@ -127,44 +124,26 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
             </div>
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Style Round *</label>
-              <select
-                name="sample_round"
-                value={formData.sample_round}
-                onChange={handleChange}
-                className="form-select"
-                required
-              >
-                <option value="Proto">Proto</option>
-                <option value="SMS">SMS</option>
-                <option value="PPS">PPS</option>
-                <option value="Final">Final</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Product Type *</label>
-              <select
-                name="product_type"
-                value={formData.product_type}
-                onChange={handleChange}
-                className="form-select"
-                required
-              >
-                <option value="Dress">Dress</option>
-                <option value="Jacket">Jacket</option>
-                <option value="Pants">Pants</option>
-                <option value="Corset">Corset</option>
-                <option value="Knit">Knit</option>
-                <option value="Shirt">Shirt</option>
-                <option value="Coat">Coat</option>
-                <option value="Skirt">Skirt</option>
-                <option value="Top">Top</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
+          <div className="form-group">
+            <label className="form-label">Product Type *</label>
+            <select
+              name="product_type"
+              value={formData.product_type}
+              onChange={handleChange}
+              className="form-select"
+              required
+            >
+              <option value="Dress">Dress</option>
+              <option value="Jacket">Jacket</option>
+              <option value="Pants">Pants</option>
+              <option value="Corset">Corset</option>
+              <option value="Knit">Knit</option>
+              <option value="Shirt">Shirt</option>
+              <option value="Coat">Coat</option>
+              <option value="Skirt">Skirt</option>
+              <option value="Top">Top</option>
+              <option value="Other">Other</option>
+            </select>
           </div>
 
           <div className="form-row">

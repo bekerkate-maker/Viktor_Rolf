@@ -1,13 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import type { Sample } from '../types';
-import { BadgeCheck, XCircle, AlertCircle, Loader2, Edit, RefreshCw, MessageCircle } from 'lucide-react';
 
 interface SampleHeaderProps {
   sample: Sample;
-  onEdit: () => void;
-  onChangeStatus: () => void;
-  onAddReview: () => void;
 }
 
 export const getStatusBadge = (status: string) => {
@@ -40,28 +36,13 @@ export const getStatusBadge = (status: string) => {
       border: `1.5px solid ${color}`,
       transition: 'box-shadow 0.2s',
     }}>
-      <span style={{width: 12, height: 12, borderRadius: '50%', background: dot, display: 'inline-block', marginRight: 10, boxShadow: `0 0 0 2px ${bg}`}}></span>
+      {status !== 'Approved' && <span style={{width: 12, height: 12, borderRadius: '50%', background: dot, display: 'inline-block', marginRight: 10, boxShadow: `0 0 0 2px ${bg}`}}></span>}
       {label}
     </span>
   );
 };
 
-const getNextActionHint = (sample: Sample) => {
-  if (sample.quality_reviews && sample.quality_reviews.length > 0) {
-    const open = sample.quality_reviews.filter(r => r.review_status !== 'Resolved');
-    if (open.some(r => r.action_required)) {
-      return 'Waiting for supplier update';
-    }
-    if (open.length > 0) {
-      return 'Waiting for internal QC';
-    }
-  }
-  if (sample.status === 'Approved') return 'No further action needed';
-  if (sample.status === 'Rejected') return 'Review and resolve issues';
-  return 'Waiting for internal QC';
-};
-
-const SampleHeader: React.FC<SampleHeaderProps> = ({ sample, onEdit, onChangeStatus, onAddReview }) => {
+const SampleHeader: React.FC<SampleHeaderProps> = ({ sample }) => {
   return (
     <div className="sample-header luxury-header" style={{
       position: 'relative',

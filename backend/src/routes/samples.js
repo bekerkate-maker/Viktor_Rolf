@@ -93,10 +93,8 @@ router.get('/:id', async (req, res) => {
 
     if (qrError) throw qrError;
 
-    // Get sample_round from parent sample (already fetched as 'sample')
-    const sampleRound = sample.sample_round;
-    // Add sample_round to each review
-    const qualityReviewsWithRound = qualityReviews.map(qr => ({ ...qr, sample_round: sampleRound }));
+    // Add empty sample_round for compatibility if needed, or remove it entirely
+    const qualityReviewsWithRound = qualityReviews.map(qr => ({ ...qr }));
 
     // Get supplier communications
     const { data: supplierComms, error: scError } = await supabase
@@ -172,7 +170,6 @@ router.post('/', async (req, res) => {
       collection_id,
       sample_code,
       name,
-      sample_round,
       product_type,
       supplier_name,
       status,
@@ -196,7 +193,6 @@ router.post('/', async (req, res) => {
         collection_id,
         sample_code,
         name,
-        sample_round: sample_round || 'Proto',
         product_type: product_type || 'Other',
         supplier_name: supplier_name || '',
         status: status || 'In Review',
@@ -240,7 +236,6 @@ router.put('/:id', async (req, res) => {
   try {
     const {
       name,
-      sample_round,
       product_type,
       supplier_name,
       status,
@@ -266,7 +261,6 @@ router.put('/:id', async (req, res) => {
     // Update sample
     const updateData = {};
     if (name !== undefined) updateData.name = name;
-    if (sample_round !== undefined) updateData.sample_round = sample_round;
     if (product_type !== undefined) updateData.product_type = product_type;
     if (supplier_name !== undefined) updateData.supplier_name = supplier_name;
     if (status !== undefined) updateData.status = status;

@@ -74,7 +74,7 @@ function Layout({ children }: LayoutProps) {
           </li>
           <li>
             <Link to="/supplier-communications" className={isActive('/supplier-communications')}>
-              Supplier Communications
+              Manufacturer Communications
             </Link>
           </li>
           {user && (

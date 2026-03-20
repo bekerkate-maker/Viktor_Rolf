@@ -13,7 +13,7 @@ export interface Collection {
   name: string;
   season: string;
   year: number;
-  category: 'Mariage' | 'Haute Couture' | 'Ready to Wear';
+  category: 'Mariage' | 'Eyewear Collection' | 'Ready to Wear';
   status: 'Active' | 'Archived';
   created_at: string;
   updated_at: string;
@@ -30,7 +30,6 @@ export interface Sample {
   collection_id: number;
   sample_code: string;
   name: string;
-  sample_round: 'Proto' | 'SMS' | 'PPS' | 'Final';
   product_type: 'Jacket' | 'Dress' | 'Pants' | 'Corset' | 'Knit' | 'Shirt' | 'Coat' | 'Skirt' | 'Top' | 'Other';
   supplier_name: string;
   status: 'In Review' | 'Changes Needed' | 'Approved' | 'Rejected';

@@ -168,7 +168,7 @@ const InternalNotesSection: React.FC<{ sample: Sample }> = ({ sample }) => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="no-print" style={{ display: 'flex', gap: 8 }}>
               <button
                 style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 6, background: '#fff', border: '1px solid #ddd', color: '#333', cursor: 'pointer', fontSize: 13, fontWeight: 500, transition: 'all 0.2s' }}
                 onClick={handleEdit}

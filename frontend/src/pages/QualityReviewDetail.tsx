@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { qualityReviewsAPI } from '../api';
 import type { QualityReview } from '../types';
 
@@ -43,29 +43,29 @@ function QualityReviewDetail() {
 
   return (
     <div>
-      <div className="page-header" style={{ position: 'relative' }}>
-        <Link
-          to="/quality-control"
-          className="back-arrow"
+      <div style={{ padding: '20px 16px' }}>
+        <div
+          onClick={() => navigate('/quality-control')}
           style={{
-            position: 'absolute',
-            left: 0,
-            top: 16,
-            textDecoration: 'none',
-            color: '#333',
-            fontSize: 32,
-            background: 'rgba(255,255,255,0.85)',
-            borderRadius: '0 18px 18px 0',
-            padding: '8px 18px 8px 8px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-            transition: 'background 0.2s',
+            fontSize: '10px',
+            fontWeight: 700,
+            letterSpacing: '2px',
+            color: '#999',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+            marginBottom: 48,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            transition: 'color 0.2s'
           }}
-          title="Back to Quality Control"
+          onMouseEnter={(e) => e.currentTarget.style.color = '#111'}
+          onMouseLeave={(e) => e.currentTarget.style.color = '#999'}
         >
-          ←
-        </Link>
-        <h1 className="page-title" style={{ marginLeft: 48 }}>Quality Review #{review.id}</h1>
-        <p className="page-subtitle" style={{ marginLeft: 48 }}>
+          ← Back
+        </div>
+        <h1 className="page-title" style={{ margin: 0, fontSize: '48px', fontWeight: 300, color: '#111', letterSpacing: '-0.5px' }}>Quality Review #{review.id}</h1>
+        <p style={{ margin: '4px 0 0 0', fontSize: '13px', fontWeight: 700, letterSpacing: '2.5px', color: '#999', textTransform: 'uppercase' }}>
           {review.sample_code} · {review.collection_name}
         </p>
       </div>

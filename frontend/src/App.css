@@ -1318,19 +1318,19 @@
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 0;
-  background: var(--vr-cream);
+  background: #fcfcfc;
   border-bottom: 2px solid var(--vr-black);
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 0.85rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--vr-black);
+  letter-spacing: 0.15em;
+  color: #111;
 }
 
 .samples-table-header-inner {
   display: grid;
-  grid-template-columns: 130px 1fr 150px 150px 180px;
-  gap: var(--spacing-md);
+  grid-template-columns: 180px 2fr 120px 120px 150px;
+  gap: var(--spacing-lg);
   padding: var(--spacing-xl);
   align-items: center;
 }
@@ -1358,8 +1358,8 @@
 
 .sample-row-link {
   display: grid;
-  grid-template-columns: 130px 1fr 150px 150px 180px;
-  gap: var(--spacing-md);
+  grid-template-columns: 180px 2fr 120px 120px 150px;
+  gap: var(--spacing-lg);
   padding: var(--spacing-xl);
   text-decoration: none;
   color: inherit;
@@ -1385,10 +1385,11 @@
 
 .sample-col-round,
 .sample-col-type {
-  font-size: 1rem;
-  color: var(--vr-gray);
+  font-size: 0.85rem;
+  color: #888;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  font-weight: 500;
 }
 
 .sample-col-status {
@@ -1792,33 +1793,207 @@
    ========================================= */
 @media print {
   @page {
-    margin: 10mm;
+    size: A4;
+    margin: 30mm 15mm 25mm 15mm; /* Extra clear top/bottom margin for all pages */
   }
+
+  /* Hide default browser header/footer date/time if possible */
+  @page :left { margin-left: 15mm; }
+  @page :right { margin-left: 15mm; }
+  @page :first { margin-top: 30mm; }
 
   /* Hide navigation, background, and UI buttons */
   .top-nav,
   .no-print,
-  button,
   .user-menu-container {
     display: none !important;
   }
+  
+  /* Show print-only elements */
+  .print-only {
+    display: block !important;
+  }
+  
+  .print-only.print-flex-row {
+    display: flex !important;
+  }
 
+  /* Reset layout structure for printing */
   body,
   .main-layout,
-  .main-content {
+  .main-content,
+  #root,
+  html {
     background: white !important;
     padding: 0 !important;
     margin: 0 !important;
     box-shadow: none !important;
+    height: auto !important;
+    width: 100% !important;
+    overflow: visible !important;
+    position: static !important;
   }
 
+  .sample-detail-modern {
+    padding: 0 !important;
+  }
+
+  /* STRUCTURING SECTIONS INTO SEPARATE PAGES */
+  .print-page-box {
+    break-after: page !important;
+    page-break-after: always !important;
+    padding-bottom: 5mm !important; 
+  }
+  
+  .print-notes-box {
+    min-height: 235mm !important; /* Exact fit for A4 with our top/bottom margins */
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .print-top-section {
+    display: block !important; /* Stack photos and info vertically */
+  }
+
+  .assessment-wrapper {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin-top: 0 !important;
+  }
+
+  /* Styling for printable cards */
   .luxury-card {
     box-shadow: none !important;
-    border: 1px solid #ccc !important;
-    break-inside: avoid;
+    border: none !important; /* user requested it "a lot cleaner"; removing the border around blocks makes them blend beautifully */
+    border-radius: 0 !important;
+    margin-bottom: 20px !important;
+    padding: 0 !important;
+  }
+  
+  /* Feature the style info as a distinct outlined block spaced nicely */
+  .print-style-info-box {
+    margin-top: 40px !important;
+    padding: 20px 0 !important;
+    border-top: 2px solid #111 !important;
+    border-bottom: 2px solid #111 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-radius: 0 !important;
+  }
+  
+  .print-style-info-box .luxury-card-title {
+    text-align: left !important;
+    display: block !important;
+    margin: 0 0 20px 0 !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 2.5px !important;
+    color: #111 !important;
+  }
+  
+  .print-style-info-box .luxury-info-grid {
+    max-width: 100% !important; 
+    margin: 0 !important; 
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 24px !important;
+  }
+  
+  .print-style-info-box .luxury-info-grid > div > div:first-child {
+    font-size: 11px !important;
+    color: #777 !important;
+    letter-spacing: 1px !important;
+    margin-bottom: 4px !important;
+  }
+  
+  .print-style-info-box .luxury-info-grid > div > div:last-child {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: #111 !important;
   }
 
-  /* Force background colors to show in print (like status badges) */
+  /* CHECKLISTS EXTREME COMPACTION to fit all 30 items on 1 page! */
+  .assessment-checklists-container {
+    display: block !important; 
+    margin-bottom: 0 !important;
+  }
+
+  .assessment-checklist-card {
+    display: block !important; 
+    height: auto !important; 
+    overflow: visible !important;
+    padding: 16px 24px !important;
+    break-inside: auto !important; 
+    margin-bottom: 0 !important;
+  }
+
+  .assessment-checklist-row {
+    display: grid !important; 
+    grid-template-columns: minmax(0, 1fr) 90px 90px 90px !important; /* Wider columns to ensure 'Approved' is not cut off */
+    gap: 8px !important;
+    align-items: center !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important; 
+    margin-bottom: 0 !important;
+    padding: 4px 0 !important; /* Very tight vertical spacing */
+    border-bottom: 1px solid #f5f5f5 !important;
+  }
+  
+  /* Small text size for item names */
+  .assessment-checklist-row > div:first-child {
+    font-size: 11px !important;
+    font-weight: 500 !important;
+  }
+  
+  /* Compact state badges (Reject/Review/Approve) */
+  .assessment-checklist-row > div:not(:first-child) {
+    height: 22px !important;
+    border-radius: 4px !important;
+    border-width: 1px !important;
+    padding: 0 !important;
+  }
+  
+  /* Downscale the checkmark/cross icons */
+  .assessment-checklist-row svg {
+    width: 12px !important;
+    height: 12px !important;
+    stroke-width: 2 !important;
+  }
+
+  /* Reduce title spacing */
+  .luxury-card-title {
+    margin-bottom: 10px !important;
+    font-size: 15px !important;
+  }
+  
+  /* Images handling */
+  img {
+    break-inside: avoid;
+    max-height: 400px !important;
+    object-fit: contain !important; /* Ensure the full photo is visible without cutoff */
+  }
+
+  /* Status layout */
+  .luxury-info-grid {
+    column-gap: 30px !important;
+    row-gap: 20px !important; 
+  }
+  .luxury-info-grid > div > div:first-child {
+    font-size: 10px !important;
+    margin-bottom: 4px !important;
+  }
+  .luxury-info-grid > div > div:last-child {
+    font-size: 14px !important;
+  }
+
+  /* Scale everything slightly down for neat A4 fitting */
+  body {
+    zoom: 0.95; 
+  }
+
+  /* Force background colors to show in print */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;

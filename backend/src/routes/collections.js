@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
       if (!category && c.name) {
         const name = c.name.toLowerCase();
         if (name.includes('ready to wear') || name.includes('rtw')) category = 'Ready to Wear';
-        else if (name.includes('couture')) category = 'Haute Couture';
+        else if (name.includes('eyewear')) category = 'Eyewear Collection';
         else if (name.includes('mariage')) category = 'Mariage';
       }
       return { ...c, category };
@@ -52,14 +52,17 @@ router.get('/', async (req, res) => {
     });
 
     // Calculate counts for each valid collection
-    const collectionsWithCounts = validCollections.map(c => ({
-      ...c,
-      sample_count: c.samples?.length || 0,
-      in_review_count: c.samples?.filter(s => s.status === 'In Review').length || 0,
-      changes_needed_count: c.samples?.filter(s => s.status === 'Changes Needed').length || 0,
-      approved_count: c.samples?.filter(s => s.status === 'Approved').length || 0,
-      rejected_count: c.samples?.filter(s => s.status === 'Rejected').length || 0
-    }));
+    const collectionsWithCounts = validCollections.map(c => {
+      const samplesList = c.samples || [];
+      return {
+        ...c,
+        sample_count: samplesList.length,
+        in_review_count: samplesList.filter(s => s.status === 'In Review').length,
+        changes_needed_count: samplesList.filter(s => s.status === 'Changes Needed').length,
+        approved_count: samplesList.filter(s => s.status === 'Approved').length,
+        rejected_count: samplesList.filter(s => s.status === 'Rejected').length
+      };
+    });
 
     res.json(collectionsWithCounts);
   } catch (error) {
