@@ -101,7 +101,7 @@ const SampleHeader: React.FC<SampleHeaderProps> = ({ sample }) => {
           justifyContent: 'flex-start',
           wordBreak: 'break-word',
         }}>
-          <span style={{whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip'}}>{sample.sample_code.split('-').pop()} — {sample.name}</span>
+          <span style={{whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip'}}>{sample.sample_code} — {sample.name}</span>
         </h1>
       </div>
     </div>

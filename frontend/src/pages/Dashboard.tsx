@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { collectionsAPI, samplesAPI, qualityReviewsAPI, supplierCommsAPI } from '../api';
+import { collectionsAPI, samplesAPI, qualityReviewsAPI } from '../api';
 import type { Collection, Sample } from '../types';
 
 function Dashboard() {
@@ -11,7 +11,7 @@ function Dashboard() {
     activeCollections: 0,
     totalSamples: 0,
     pendingReviews: 0,
-    overdueComms: 0,
+
   });
   const [loading, setLoading] = useState(true);
 
@@ -21,11 +21,10 @@ function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const [collectionsRes, samplesRes, qrStatsRes, scStatsRes] = await Promise.all([
+      const [collectionsRes, samplesRes, qrStatsRes] = await Promise.all([
         collectionsAPI.getAll(),
         samplesAPI.getAll(),
         qualityReviewsAPI.getStats(),
-        supplierCommsAPI.getStats(),
       ]);
 
       const collectionsData = collectionsRes.data;
@@ -39,7 +38,6 @@ function Dashboard() {
         activeCollections: collectionsData.filter(c => c.status === 'Active').length,
         totalSamples: samplesData.length,
         pendingReviews: qrStatsRes.data.pending_review,
-        overdueComms: scStatsRes.data.overdue_samples,
       });
 
       setLoading(false);
@@ -74,10 +72,7 @@ function Dashboard() {
           <div className="stat-value">{stats.pendingReviews}</div>
           <div className="stat-label">Pending Reviews</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-value">{stats.overdueComms}</div>
-          <div className="stat-label">Overdue Communications</div>
-        </div>
+
       </div>
 
       {/* Active Collections */}

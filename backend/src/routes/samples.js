@@ -244,6 +244,7 @@ router.put('/:id', async (req, res) => {
       feedback_deadline,
       internal_notes,
       tags,
+      sample_code,
       user_id
     } = req.body;
 
@@ -269,6 +270,7 @@ router.put('/:id', async (req, res) => {
     if (feedback_deadline !== undefined) updateData.feedback_deadline = feedback_deadline;
     if (internal_notes !== undefined) updateData.internal_notes = internal_notes;
     if (tags !== undefined) updateData.tags = tags;
+    if (sample_code !== undefined) updateData.sample_code = sample_code;
 
     const { data: sample, error: updateError } = await supabase
       .from('samples')

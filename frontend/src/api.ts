@@ -3,10 +3,10 @@ import type {
   Collection,
   Sample,
   QualityReview,
-  SupplierCommunication,
+
   User,
   QualityReviewStats,
-  SupplierCommStats,
+
 } from './types';
 
 const API_BASE_URL = '/api';
@@ -115,29 +115,7 @@ export const qualityReviewsAPI = {
   getStats: () => api.get<QualityReviewStats>('/quality-reviews/stats/overview'),
 };
 
-// Supplier Communications
-export const supplierCommsAPI = {
-  getAll: (params?: { sample_id?: number; status?: string; supplier_name?: string }) =>
-    api.get<SupplierCommunication[]>('/supplier-communications', { params }),
-  getById: (id: number) => api.get<SupplierCommunication>(`/supplier-communications/${id}`),
-  getOverdue: () => api.get<SupplierCommunication[]>('/supplier-communications/overdue'),
-  getImportant: () => api.get<SupplierCommunication[]>('/supplier-communications/important'),
-  create: (data: Partial<SupplierCommunication>) =>
-    api.post<SupplierCommunication>('/supplier-communications', data),
-  update: (id: number, data: Partial<SupplierCommunication>) =>
-    api.put<SupplierCommunication>(`/supplier-communications/${id}`, data),
-  delete: (id: number) => api.delete(`/supplier-communications/${id}`),
-  uploadAttachments: (id: number, files: File[]) => {
-    const formData = new FormData();
-    files.forEach((file) => formData.append('attachments', file));
-    return api.post(`/supplier-communications/${id}/attachments`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-  },
-  deleteAttachment: (commId: number, attachmentId: number) =>
-    api.delete(`/supplier-communications/${commId}/attachments/${attachmentId}`),
-  getStats: () => api.get<SupplierCommStats>('/supplier-communications/stats/overview'),
-};
+
 
 // Users
 export const usersAPI = {
@@ -181,6 +159,19 @@ export const photosAPI = {
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     });
   },
+};
+
+// Manufacturers
+export interface Manufacturer {
+  id: string;
+  name: string;
+}
+
+export const manufacturersAPI = {
+  getAll: () => api.get<Manufacturer[]>('/manufacturers'),
+  create: (name: string) => api.post<Manufacturer>('/manufacturers', { name }),
+  update: (id: string, name: string, oldName?: string) => api.put<Manufacturer>(`/manufacturers/${id}`, { name, oldName }),
+  delete: (id: string) => api.delete(`/manufacturers/${id}`),
 };
 
 export default api;

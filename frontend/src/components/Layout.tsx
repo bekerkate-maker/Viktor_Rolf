@@ -72,11 +72,7 @@ function Layout({ children }: LayoutProps) {
               Quality Control
             </Link>
           </li>
-          <li>
-            <Link to="/supplier-communications" className={isActive('/supplier-communications')}>
-              Manufacturer Communications
-            </Link>
-          </li>
+
           {user && (
             <li className="user-menu-container" ref={menuRef}>
               <button

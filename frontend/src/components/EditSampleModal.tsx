@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { samplesAPI } from '../api';
+import { samplesAPI, manufacturersAPI } from '../api';
 import type { Sample } from '../types';
 
 interface EditSampleModalProps {
@@ -12,34 +12,102 @@ interface EditSampleModalProps {
 function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampleModalProps) {
   const [formData, setFormData] = useState({
     name: '',
-    product_type: 'Dress' as 'Jacket' | 'Dress' | 'Pants' | 'Corset' | 'Knit' | 'Shirt' | 'Coat' | 'Skirt' | 'Top' | 'Other',
+    product_type: 'Dress' as any,
     supplier_name: '',
-    status: 'In Review' as 'In Review' | 'Changes Needed' | 'Approved' | 'Rejected',
+    status: 'In Review' as any,
     received_date: '',
     feedback_deadline: '',
     internal_notes: '',
     tags: '',
+    // New Article Number components
+    garment_type: 'X',
+    garment_category: 'S',
+    sequence: '001',
+    fabric_code: '00',
+    color_code: '11',
+    season_digit: '1',
+    year_digits: '26',
   });
 
   const [submitting, setSubmitting] = useState(false);
   const [showManufacturerDropdown, setShowManufacturerDropdown] = useState(false);
-  const manufacturersList = ["Cousy", "ABtex", "Guay", "F&P", "5D", "AESSE"];
+  const [manufacturersList, setManufacturersList] = useState<string[]>([]);
+
+  // Utility to parse code: "XS 001 00 11426"
+  const parseSampleCode = (code: string) => {
+    if (!code) return null;
+    const parts = code.split(' ');
+    if (parts.length < 4) return null;
+    
+    const typeCat = parts[0];
+    const sequence = parts[1];
+    const fabric = parts[2];
+    const lastPart = parts[3]; // "11426"
+    
+    return {
+      garment_type: typeCat[0] || 'X',
+      garment_category: typeCat[1] || 'S',
+      sequence,
+      fabric_code: fabric,
+      color_code: lastPart.substring(0, 2),
+      season_digit: lastPart.substring(2, 3),
+      year_digits: lastPart.substring(3),
+    };
+  };
+
+  const generateSampleCode = () => {
+    const { garment_type, garment_category, sequence, fabric_code, color_code, season_digit, year_digits } = formData;
+    return `${garment_type}${garment_category} ${sequence.padStart(3, '0')} ${fabric_code.padStart(2, '0')} ${color_code.padStart(2, '0')}${season_digit}${year_digits}`;
+  };
 
   // Populate form when sample changes
   useEffect(() => {
     if (isOpen && sample) {
+      const parsed = parseSampleCode(sample.sample_code);
       setFormData({
         name: sample.name || '',
-        product_type: (sample.product_type || 'Dress') as 'Jacket' | 'Dress' | 'Pants' | 'Corset' | 'Knit' | 'Shirt' | 'Coat' | 'Skirt' | 'Top' | 'Other',
+        product_type: (sample.product_type || 'Dress') as any,
         supplier_name: sample.supplier_name || '',
-        status: (sample.status || 'In Review') as 'In Review' | 'Changes Needed' | 'Approved' | 'Rejected',
+        status: (sample.status || 'In Review') as any,
         received_date: sample.received_date ? sample.received_date.split('T')[0] : '',
         feedback_deadline: sample.feedback_deadline ? sample.feedback_deadline.split('T')[0] : '',
         internal_notes: sample.internal_notes || '',
         tags: sample.tags || '',
+        garment_type: parsed?.garment_type || 'X',
+        garment_category: parsed?.garment_category || 'S',
+        sequence: parsed?.sequence || '001',
+        fabric_code: parsed?.fabric_code || '00',
+        color_code: parsed?.color_code || '11',
+        season_digit: parsed?.season_digit || '1',
+        year_digits: parsed?.year_digits || '26',
       });
+
+      // Load dynamic manufacturers
+      manufacturersAPI.getAll().then(res => {
+        setManufacturersList(res.data.map(m => m.name));
+      }).catch(console.error);
     }
   }, [isOpen, sample]);
+
+  // Update garment category based on product type (only on add/initial, but here too for consistency)
+  useEffect(() => {
+    const typeMap: Record<string, string> = {
+      'Jacket': 'J',
+      'Dress': 'D',
+      'Pants': 'P',
+      'Corset': 'C',
+      'Knit': 'K',
+      'Shirt': 'S',
+      'Coat': 'O',
+      'Skirt': 'K',
+      'Top': 'T',
+      'Other': 'X'
+    };
+    if (typeMap[formData.product_type]) {
+      // Only auto-update if it's the default or matches previous product_type
+      // For now, let's allow manual overrides to stick.
+    }
+  }, [formData.product_type]);
 
   if (!isOpen || !sample) return null;
 
@@ -57,6 +125,7 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
         product_type: formData.product_type,
         supplier_name: formData.supplier_name,
         status: formData.status,
+        sample_code: generateSampleCode(),
         received_date: formData.received_date || undefined,
         feedback_deadline: formData.feedback_deadline || undefined,
         internal_notes: formData.internal_notes,
@@ -80,9 +149,16 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    let value = e.target.value;
+    const components = ['garment_type', 'garment_category', 'sequence', 'fabric_code', 'color_code', 'season_digit', 'year_digits'];
+    
+    if (components.includes(e.target.name)) {
+      value = value.toUpperCase();
+    }
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [e.target.name]: value,
     });
   };
 
@@ -95,22 +171,93 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Article Number</label>
-              <input
-                type="text"
-                value={sample.sample_code}
-                className="form-input"
-                disabled
-                style={{ background: '#f5f5f5', cursor: 'not-allowed' }}
-              />
-              <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
-                Article number cannot be changed
+          <div style={{ marginBottom: 24, padding: 16, background: '#fcfcfc', border: '1px solid #eee', borderRadius: 8, width: '100%', boxSizing: 'border-box' }}>
+            <label className="form-label" style={{ fontWeight: 700, marginBottom: 12, color: '#111', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Article Number Components</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'end' }}>
+              <div style={{ width: 100 }}>
+                <label style={{ fontSize: 10, color: '#999', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Type/Cat</label>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <input
+                    type="text"
+                    name="garment_type"
+                    value={formData.garment_type}
+                    onChange={handleChange}
+                    style={{ width: 45, padding: '8px 4px', textAlign: 'center', border: '1px solid #ddd', borderRadius: 4, fontSize: 14 }}
+                    maxLength={1}
+                  />
+                  <input
+                    type="text"
+                    name="garment_category"
+                    value={formData.garment_category}
+                    onChange={handleChange}
+                    style={{ width: 45, padding: '8px 4px', textAlign: 'center', border: '1px solid #ddd', borderRadius: 4, fontSize: 14 }}
+                    maxLength={1}
+                  />
+                </div>
+              </div>
+              <div style={{ width: 70 }}>
+                <label style={{ fontSize: 10, color: '#999', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Seq.</label>
+                <input
+                  type="text"
+                  name="sequence"
+                  value={formData.sequence}
+                  onChange={handleChange}
+                  style={{ width: '100%', padding: '8px 8px', textAlign: 'center', border: '1px solid #ddd', borderRadius: 4, fontSize: 14 }}
+                  maxLength={3}
+                  placeholder="001"
+                />
+              </div>
+              <div style={{ width: 60 }}>
+                <label style={{ fontSize: 10, color: '#999', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Fab.</label>
+                <input
+                  type="text"
+                  name="fabric_code"
+                  value={formData.fabric_code}
+                  onChange={handleChange}
+                  style={{ width: '100%', padding: '8px 8px', textAlign: 'center', border: '1px solid #ddd', borderRadius: 4, fontSize: 14 }}
+                  maxLength={2}
+                  placeholder="00"
+                />
+              </div>
+              <div style={{ width: 160 }}>
+                <label style={{ fontSize: 10, color: '#999', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Color/Ses/Yr</label>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <input
+                    type="text"
+                    name="color_code"
+                    value={formData.color_code}
+                    onChange={handleChange}
+                    style={{ width: 55, padding: '8px 4px', textAlign: 'center', border: '1px solid #ddd', borderRadius: 4, fontSize: 14 }}
+                    maxLength={2}
+                    placeholder="11"
+                  />
+                  <input
+                    type="text"
+                    name="season_digit"
+                    value={formData.season_digit}
+                    onChange={handleChange}
+                    style={{ width: 45, padding: '8px 4px', textAlign: 'center', border: '1px solid #ddd', borderRadius: 4, fontSize: 14 }}
+                    maxLength={1}
+                    placeholder="4"
+                  />
+                  <input
+                    type="text"
+                    name="year_digits"
+                    value={formData.year_digits}
+                    onChange={handleChange}
+                    style={{ width: 55, padding: '8px 4px', textAlign: 'center', border: '1px solid #ddd', borderRadius: 4, fontSize: 14 }}
+                    maxLength={2}
+                    placeholder="26"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="form-group">
+            <div style={{ marginTop: 24, textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#111', fontFamily: 'monospace', letterSpacing: '0.5px' }}>
+              {generateSampleCode()}
+            </div>
+
+            <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid #eee' }}>
               <label className="form-label">Article Description *</label>
               <input
                 type="text"
@@ -305,8 +452,8 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
             </button>
           </div>
         </form>
-      </div >
-    </div >
+      </div>
+    </div>
   );
 }
 

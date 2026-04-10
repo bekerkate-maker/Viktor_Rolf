@@ -47,9 +47,9 @@ export interface Sample {
   responsible_user_name?: string;
   responsible_user_email?: string;
   quality_review_count?: number;
-  supplier_comm_count?: number;
+
   quality_reviews?: QualityReview[];
-  supplier_communications?: SupplierCommunication[];
+
   audit_trail?: AuditTrailEntry[];
   photos?: SamplePhoto[];
 }
@@ -105,36 +105,9 @@ export interface QualityReviewComment {
   user_email?: string;
 }
 
-export interface SupplierCommunication {
-  id: number;
-  sample_id: number;
-  supplier_name: string;
-  communication_date: string;
-  communication_type: 'Email' | 'Call' | 'Meeting';
-  summary: string;
-  sample_due_date: string | null;
-  feedback_due_date: string | null;
-  status: 'Waiting for Supplier' | 'Waiting for Internal Feedback' | 'Completed';
-  is_important: boolean;
-  created_by: number;
-  created_at: string;
-  updated_at: string;
-  sample_code?: string;
-  sample_name?: string;
-  collection_name?: string;
-  created_by_name?: string;
-  created_by_email?: string;
-  attachments?: SupplierCommAttachment[];
-}
 
-export interface SupplierCommAttachment {
-  id: number;
-  supplier_comm_id: number;
-  file_path: string;
-  file_name: string;
-  file_type: string;
-  uploaded_at: string;
-}
+
+
 
 export interface AuditTrailEntry {
   id: number;
@@ -164,11 +137,7 @@ export interface DashboardStats {
     pending: number;
     high_severity: number;
   };
-  supplier_comms: {
-    total: number;
-    waiting_supplier: number;
-    overdue: number;
-  };
+
 }
 
 export interface QualityReviewStats {
@@ -181,11 +150,4 @@ export interface QualityReviewStats {
   low_severity: number;
 }
 
-export interface SupplierCommStats {
-  total_communications: number;
-  waiting_for_supplier: number;
-  waiting_for_internal: number;
-  completed: number;
-  overdue_samples: number;
-  important_open: number;
-}
+

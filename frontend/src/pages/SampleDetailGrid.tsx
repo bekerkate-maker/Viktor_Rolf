@@ -183,9 +183,9 @@ function SampleDetailGrid() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 32 }}>
           <div style={{ fontWeight: 300, fontSize: 48, letterSpacing: -0.5, color: '#111', wordBreak: 'break-word', lineHeight: 1.1 }}>
             <span style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '2.5px', color: '#999', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
-              {sample.sample_code}
+              {sample.name}
             </span>
-            {sample.name}
+            {sample.sample_code}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
             <div>{getStatusBadge(sample.status)}</div>

@@ -8,8 +8,7 @@ import CollectionDetail from './pages/CollectionDetail';
 import SampleDetail from './pages/SampleDetail';
 import QualityControl from './pages/QualityControl';
 import QualityReviewDetail from './pages/QualityReviewDetail';
-import SupplierCommunications from './pages/SupplierCommunications';
-import SupplierCommDetail from './pages/SupplierCommDetail';
+
 import './App.css';
 
 function App() {
@@ -32,8 +31,7 @@ function App() {
         <Route path="/quality-control/:category/:year" element={<Layout><QualityControl /></Layout>} />
         <Route path="/quality-control/:category/:year/:season" element={<Layout><QualityControl /></Layout>} />
         <Route path="/quality-reviews/:id" element={<Layout><QualityReviewDetail /></Layout>} />
-        <Route path="/supplier-communications" element={<Layout><SupplierCommunications /></Layout>} />
-        <Route path="/supplier-communications/:id" element={<Layout><SupplierCommDetail /></Layout>} />
+
       </Routes>
     </Router>
   );

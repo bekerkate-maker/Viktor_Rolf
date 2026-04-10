@@ -16,7 +16,7 @@ import authRouter from './routes/auth.js';
 import collectionsRouter from './routes/collections.js';
 import samplesRouter from './routes/samples.js';
 import qualityReviewsRouter from './routes/qualityReviews.js';
-import supplierCommRouter from './routes/supplierCommunications.js';
+
 import usersRouter from './routes/users.js';
 import photosRouter from './routes/photos.js';
 
@@ -36,7 +36,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/collections', collectionsRouter);
 app.use('/api/samples', samplesRouter);
 app.use('/api/quality-reviews', qualityReviewsRouter);
-app.use('/api/supplier-communications', supplierCommRouter);
+
 app.use('/api/users', usersRouter);
 app.use('/api/photos', photosRouter);
 

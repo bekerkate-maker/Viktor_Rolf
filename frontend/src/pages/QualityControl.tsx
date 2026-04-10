@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { collectionsAPI, samplesAPI } from '../api';
+import { collectionsAPI, samplesAPI, photosAPI, manufacturersAPI } from '../api';
 import type { Collection, Sample } from '../types';
 import AddSampleModal from '../components/AddSampleModal';
 import EditSampleModal from '../components/EditSampleModal';
+import ManufacturersModal from '../components/ManufacturersModal';
 import { Plus } from 'lucide-react';
 
 type Category = 'Mariage' | 'Eyewear Collection' | 'Ready to Wear';
@@ -13,6 +14,7 @@ let collectionsCachePromise: Promise<any> | null = null;
 
 const CATEGORY_MAP: Record<string, Category> = {
   'ready-to-wear': 'Ready to Wear',
+  'rtw': 'Ready to Wear',
   'eyewear-collection': 'Eyewear Collection',
   'mariage': 'Mariage'
 };
@@ -32,18 +34,24 @@ export function fetchCollectionsCached(force = false) {
     cachedCollections = null;
     collectionsCachePromise = null;
   }
-  if (cachedCollections) {
+  
+  // Use a more robust check for cachedCollections
+  if (cachedCollections !== null) {
     return Promise.resolve(cachedCollections);
   }
+  
   if (!collectionsCachePromise) {
-    collectionsCachePromise = collectionsAPI.getAll().then(res => {
-      cachedCollections = res.data;
-      return cachedCollections;
-    }).catch(err => {
-      collectionsCachePromise = null;
-      throw err;
-    });
+    collectionsCachePromise = collectionsAPI.getAll()
+      .then(res => {
+        cachedCollections = res.data || [];
+        return cachedCollections;
+      })
+      .catch(err => {
+        collectionsCachePromise = null;
+        throw err;
+      });
   }
+  
   return collectionsCachePromise;
 }
 
@@ -68,12 +76,17 @@ function QualityControl() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedSample, setSelectedSample] = useState<Sample | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [manufacturerFilter, setManufacturerFilter] = useState<string>('All');
   const [showAddYearModal, setShowAddYearModal] = useState(false);
   const [newYear, setNewYear] = useState<number>(new Date().getFullYear() + 1);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [showAllSamples, setShowAllSamples] = useState(false);
   const [isEditingYears, setIsEditingYears] = useState(false);
+  const [selectedSampleIds, setSelectedSampleIds] = useState<number[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
+  const [printSamples, setPrintSamples] = useState<Sample[]>([]);
+  const [showManufacturersModal, setShowManufacturersModal] = useState(false);
+  const [manufacturers, setManufacturers] = useState<string[]>([]);
 
   // Initialize and Sync State from URL params
   useEffect(() => {
@@ -112,6 +125,7 @@ function QualityControl() {
     } else {
       setCollections([]);
       setSamples([]);
+      setSelectedSampleIds([]);
     }
   }, [selectedCategory, selectedYear, selectedSeason]);
 
@@ -124,22 +138,50 @@ function QualityControl() {
     }
   }, [collections]);
 
+  // Load available manufacturers
+  useEffect(() => {
+    loadManufacturersFromDB();
+  }, [samples]);
+
+  const loadManufacturersFromDB = async () => {
+    try {
+      const res = await manufacturersAPI.getAll();
+      const managed = res.data.map(m => m.name);
+      
+      const fromSamples = Array.from(new Set(samples.map(s => s.supplier_name).filter(Boolean)));
+      const combined = Array.from(new Set([...managed, ...fromSamples])).sort();
+      setManufacturers(combined as string[]);
+    } catch (err) {
+      console.error('Error loading manufacturers:', err);
+      // Fallback
+      const fromSamples = Array.from(new Set(samples.map(s => s.supplier_name).filter(Boolean))).sort();
+      setManufacturers(fromSamples as string[]);
+    }
+  };
+
   const loadCollections = async () => {
     try {
       setLoading(true);
-      const response = await collectionsAPI.getAll();
-      console.log('All collections:', response.data);
+      const data = await fetchCollectionsCached();
+      console.log('Total collections fetched:', data.length);
+      
       // Convert selectedSeason to database format (SS or FW)
       const seasonCode = selectedSeason === 'Spring/Summer' ? 'SS' : 'FW';
-      const filtered = response.data.filter((col: any) => {
-        const catMatch = col.category && selectedCategory &&
-          col.category.trim().toLowerCase() === selectedCategory.trim().toLowerCase();
-
+      
+      const filtered = data.filter((col: Collection) => {
+        if (!col.category || !selectedCategory) return false;
+        
+        const dbCat = col.category.trim().toLowerCase();
+        const selCat = selectedCategory.trim().toLowerCase();
+        const isRtwMatch = (selCat === 'ready to wear' || selCat === 'rtw') && (dbCat === 'ready to wear' || dbCat === 'rtw');
+        
+        const catMatch = dbCat === selCat || isRtwMatch;
         const yearMatch = Number(col.year) === Number(selectedYear);
         const seasonMatch = col.season === seasonCode;
 
         return catMatch && yearMatch && seasonMatch;
       });
+      
       console.log('Filtered collections:', filtered);
       setCollections(filtered);
       setLoading(false);
@@ -150,21 +192,29 @@ function QualityControl() {
   };
 
   const loadSamples = async () => {
+    if (collections.length === 0) {
+      setSamples([]);
+      return;
+    }
+    
     try {
       setLoading(true);
-      console.log('Loading samples for collections:', collections);
-      // Get samples from all collections for this category/year/season
-      const allSamples: Sample[] = [];
-      for (const collection of collections) {
-        const response = await samplesAPI.getByCollection(String(collection.id));
-        console.log(`Samples for collection ${collection.id}:`, response.data);
-        allSamples.push(...response.data);
-      }
-      console.log('All samples loaded:', allSamples);
+      console.log('Loading samples for collections:', collections.map(c => c.id));
+      
+      // Get samples from all collections in parallel for better performance
+      const samplePromises = collections.map(collection => 
+        samplesAPI.getByCollection(String(collection.id))
+      );
+      
+      const responses = await Promise.all(samplePromises);
+      const allSamples: Sample[] = responses.flatMap(res => res.data);
+      
+      console.log('All samples loaded:', allSamples.length);
       setSamples(allSamples);
-      setLoading(false);
     } catch (error) {
       console.error('Error loading samples:', error);
+      setSamples([]); // Clear on error to avoid stale data
+    } finally {
       setLoading(false);
     }
   };
@@ -175,27 +225,38 @@ function QualityControl() {
   };
 
   const loadAvailableYears = async (category: Category, forceRefresh = false) => {
+    if (!category) return;
+    
     try {
       setLoading(true);
       const data = await fetchCollectionsCached(forceRefresh);
 
+      const selCat = category.trim().toLowerCase();
+      
       const years = [...new Set(
         data
-          .filter((col: Collection) => 
-            col.category && col.category.trim().toLowerCase() === category.trim().toLowerCase()
-          )
-          .map((col: Collection) => col.year)
-      )].sort((a, b) => (b as number) - (a as number));
+          .filter((col: Collection) => {
+            if (!col.category) return false;
+            const dbCat = col.category.trim().toLowerCase();
+            const isRtwMatch = (selCat === 'ready to wear' || selCat === 'rtw') && (dbCat === 'ready to wear' || dbCat === 'rtw');
+            return dbCat === selCat || isRtwMatch;
+          })
+          .map((col: Collection) => Number(col.year))
+          .filter(year => !isNaN(year))
+      )].sort((a, b) => b - a);
+
+      console.log(`Available years for ${category}:`, years);
 
       if (years.length === 0 && !forceRefresh) {
-        return loadAvailableYears(category, true);
+        console.log(`No years found for ${category}, forcing refresh...`);
+        return await loadAvailableYears(category, true);
       }
 
-      setAvailableYears(years as number[]);
-      setLoading(false);
+      setAvailableYears(years);
     } catch (error) {
       console.error('Error loading years:', error);
       setAvailableYears([]);
+    } finally {
       setLoading(false);
     }
   };
@@ -361,8 +422,55 @@ function QualityControl() {
     }
   };
 
+  const handleSelectSample = (e: React.ChangeEvent<HTMLInputElement>, id: number) => {
+    e.stopPropagation();
+    setSelectedSampleIds(prev =>
+      prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = (filteredSamples: Sample[]) => {
+    if (selectedSampleIds.length === filteredSamples.length && filteredSamples.length > 0) {
+      setSelectedSampleIds([]);
+    } else {
+      setSelectedSampleIds(filteredSamples.map(s => s.id));
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (selectedSampleIds.length === 0) return;
+
+    try {
+      setIsExporting(true);
+      const fullSamples = await Promise.all(
+        selectedSampleIds.map(async (id) => {
+          const sampleRes = await samplesAPI.getById(String(id));
+          const photosRes = await photosAPI.getPhotos(String(id));
+          return {
+            ...sampleRes.data,
+            photos: photosRes.data
+          };
+        })
+      );
+      setPrintSamples(fullSamples);
+      
+      // Wait for a bit (longer for images to load) to ensure the print view is rendered
+      setTimeout(() => {
+        window.print();
+        setIsExporting(false);
+        setPrintSamples([]); // Clear after printing
+      }, 1000);
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      alert('Failed to generate PDF export.');
+      setIsExporting(false);
+    }
+  };
+
   return (
-    <div>
+    <>
+      <div className="no-print">
+        <div className="quality-control-page luxury-font" style={{ padding: '0 24px' }}>
       {/* Terug knop - links boven, onder de navbar */}
       {selectedCategory && (
         <div style={{ paddingTop: 32, paddingLeft: 0 }}>
@@ -814,62 +922,126 @@ function QualityControl() {
 
       {/* Samples Grid */}
       {selectedCategory && selectedYear && selectedSeason && !loading && collections.length > 0 && (
-        <div className="samples-view">
-          <div className="samples-header-with-add">
+        <div className="samples-view" style={{ padding: '0 40px' }}>
+          <div className="samples-header-with-add" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', minHeight: '60px', marginTop: '20px' }}>
             <div>
-              <h2 className="section-title">
+              <h2 className="section-title" style={{ fontSize: '24px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>
                 {selectedSeason === 'Spring/Summer' ? 'Spring Summer' : 'Fall Winter'} {selectedYear}
               </h2>
-              <p className="section-subtitle">{samples.length} articles total</p>
+              <p className="section-subtitle" style={{ fontSize: '14px', color: '#666', margin: 0 }}>{samples.length} articles total</p>
             </div>
-            <button className="add-button" onClick={() => setShowAddModal(true)}>+</button>
+
+            {/* Centered Add Button */}
+            <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 0 }}>
+              <button className="add-button" onClick={() => setShowAddModal(true)} style={{ margin: 0 }}>+</button>
+            </div>
+
+            {/* Far Right Export Button */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', minWidth: '150px' }}>
+              {selectedSampleIds.length > 0 && (
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={handleExportPDF}
+                  disabled={isExporting}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '8px 16px',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    borderRadius: 8,
+                    background: '#fff',
+                    border: '1px solid #111',
+                    color: '#111',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#111';
+                    e.currentTarget.style.color = '#fff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#fff';
+                    e.currentTarget.style.color = '#111';
+                  }}
+                >
+                  {isExporting ? 'Preparing...' : `Export PDF (${selectedSampleIds.length})`}
+                </button>
+              )}
+            </div>
           </div>
-          {/* Status Filter */}
-          <div style={{ margin: '16px 0' }}>
-            <label htmlFor="status-filter" style={{ marginRight: 8 }}>Filter op status:</label>
+          {/* Manufacturer Filter */}
+          <div style={{ margin: '24px 0 16px 0', display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: '12px' }}>
             <select
-              id="status-filter"
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              style={{ padding: '4px 12px', fontSize: '1rem' }}
+              id="manufacturer-filter"
+              value={manufacturerFilter}
+              onChange={e => setManufacturerFilter(e.target.value)}
+              style={{ padding: '8px 12px', fontSize: '14px', fontWeight: 500, borderRadius: '4px', border: '1px solid #ddd', background: '#fff' }}
             >
-              <option value="All">Alle</option>
-              <option value="In Review">In Review</option>
-              <option value="Changes Needed">Changes Needed</option>
-              <option value="Approved">Approved</option>
-              <option value="Rejected">Rejected</option>
+              <option value="All">Manufacturers</option>
+              {manufacturers.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
             </select>
+            <button
+              onClick={() => setShowManufacturersModal(true)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#666', padding: '4px', display: 'flex', alignItems: 'center' }}
+              title="Manage Manufacturers List"
+            >
+              ✎
+            </button>
           </div>
           {samples.length > 0 ? (
             <div className="samples-table">
               <div className="samples-table-header">
-                <div className="samples-table-header-inner">
-                  <div className="sample-col-number">Article Number</div>
-                  <div className="sample-col-name">Article Description</div>
-                  <div className="sample-col-type">Type</div>
-                  <div className="sample-col-status">Status</div>
+                <div className="samples-table-header-inner" style={{ gridTemplateColumns: '48px 140px 1.5fr 1fr 100px 120px' }}>
+                  <div className="sample-col-check" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={samples.filter(s => manufacturerFilter === 'All' || s.supplier_name === manufacturerFilter).length > 0 && selectedSampleIds.length === samples.filter(s => manufacturerFilter === 'All' || s.supplier_name === manufacturerFilter).length}
+                      onChange={() => handleSelectAll(samples.filter(s => manufacturerFilter === 'All' || s.supplier_name === manufacturerFilter))}
+                      style={{ cursor: 'pointer', width: 18, height: 18 }}
+                    />
+                  </div>
+                  <div className="sample-col-number" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Article Code</div>
+                  <div className="sample-col-name" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Art. Description</div>
+                  <div className="sample-col-manufacturer" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Manufacturer</div>
+                  <div className="sample-col-type" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Type</div>
+                  <div className="sample-col-status" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Status</div>
                 </div>
                 <div className="sample-col-actions"></div>
               </div>
               {samples
-                .filter(sample => statusFilter === 'All' || sample.status === statusFilter)
+                .filter(sample => manufacturerFilter === 'All' || sample.supplier_name === manufacturerFilter)
                 .length > 0 ? (
                 samples
-                  .filter(sample => statusFilter === 'All' || sample.status === statusFilter)
+                  .filter(sample => manufacturerFilter === 'All' || sample.supplier_name === manufacturerFilter)
                   .map((sample) => (
                     <div key={sample.id} className="samples-table-row">
-                      <Link to={`/samples/${sample.id}`} className="sample-row-link">
-                        <div className="sample-col-number">{sample.sample_code}</div>
-                        <div className="sample-col-name">{sample.name}</div>
-                        <div className="sample-col-type">{sample.product_type}</div>
-                        <div className="sample-col-status">
-                          {sample.status !== 'Approved' && (
-                            <span className={`badge ${getStatusBadgeClass(sample.status)}`}>
-                              {sample.status}
-                            </span>
-                          )}
+                      <div className="sample-row-link" style={{ gridTemplateColumns: '48px 140px 1.5fr 1fr 100px 120px', cursor: 'default' }}>
+                        <div className="sample-col-check" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedSampleIds.includes(sample.id)}
+                            onChange={(e) => handleSelectSample(e, sample.id)}
+                            style={{ cursor: 'pointer', width: 18, height: 18 }}
+                          />
                         </div>
-                      </Link>
+                        <Link to={`/samples/${sample.id}`} style={{ display: 'contents', color: 'inherit', textDecoration: 'none' }}>
+                          <div className="sample-col-number" style={{ fontSize: '14px', fontWeight: 500 }}>{sample.sample_code}</div>
+                          <div className="sample-col-name" style={{ fontSize: '14px', fontWeight: 500 }}>{sample.name}</div>
+                          <div className="sample-col-manufacturer" style={{ fontSize: '14px', fontWeight: 500 }}>{sample.supplier_name || '—'}</div>
+                          <div className="sample-col-type" style={{ fontSize: '14px', fontWeight: 500 }}>{sample.product_type}</div>
+                          <div className="sample-col-status" style={{ fontSize: '14px', fontWeight: 500 }}>
+                            {sample.status !== 'Approved' && (
+                              <span className={`badge ${getStatusBadgeClass(sample.status)}`} style={{ fontSize: '12px' }}>
+                                {sample.status}
+                              </span>
+                            )}
+                          </div>
+                        </Link>
+                      </div>
                       <div className="sample-col-actions">
                         <button
                           className="sample-action-btn"
@@ -889,29 +1061,41 @@ function QualityControl() {
                     </div>
                   ))
               ) : (
-                <div className="samples-table-row" style={{ display: 'grid', gridTemplateColumns: '130px 1.5fr 1fr 1fr 130px', alignItems: 'center', minHeight: 48, color: '#bbb' }}>
-                  <div className="sample-col-number"></div>
-                  <div className="sample-col-name" style={{ textAlign: 'center' }}>Geen articles gevonden voor deze status</div>
-                  <div className="sample-col-type"></div>
-                  <div className="sample-col-status"></div>
+                <div className="samples-table-row" style={{ display: 'grid', gridTemplateColumns: '1fr 130px', alignItems: 'center', minHeight: 64, color: '#bbb' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '48px 140px 1.5fr 1fr 100px 120px', padding: '0 24px', alignItems: 'center' }}>
+                    <div className="sample-col-check"></div>
+                    <div className="sample-col-number"></div>
+                    <div className="sample-col-name" style={{ textAlign: 'center' }}>Geen articles gevonden voor deze manufacturer</div>
+                    <div className="sample-col-manufacturer"></div>
+                    <div className="sample-col-type"></div>
+                    <div className="sample-col-status"></div>
+                  </div>
                   <div className="sample-col-actions"></div>
                 </div>
               )}
             </div>
           ) : (
             <div className="samples-table">
-              <div className="samples-table-header" style={{ display: 'grid', gridTemplateColumns: '130px 1.5fr 1fr 1fr 130px', alignItems: 'center', minHeight: 48 }}>
-                <div className="sample-col-number" style={{ display: 'flex', alignItems: 'center', height: '100%' }}>Article Number</div>
-                <div className="sample-col-name" style={{ display: 'flex', alignItems: 'center', height: '100%' }}>Article Description</div>
-                <div className="sample-col-type" style={{ display: 'flex', alignItems: 'center', height: '100%' }}>Type</div>
-                <div className="sample-col-status" style={{ display: 'flex', alignItems: 'center', height: '100%' }}>Status</div>
-                <div className="sample-col-actions" style={{ display: 'flex', alignItems: 'center', height: '100%' }}></div>
+              <div className="samples-table-header" style={{ display: 'grid', gridTemplateColumns: '1fr 130px', alignItems: 'center', minHeight: 48 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '48px 140px 1.5fr 1fr 100px 120px', padding: '0 24px' }}>
+                  <div className="sample-col-check"></div>
+                  <div className="sample-col-number" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Art. Number</div>
+                  <div className="sample-col-name" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Art. Description</div>
+                  <div className="sample-col-manufacturer" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Manufacturer</div>
+                  <div className="sample-col-type" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Type</div>
+                  <div className="sample-col-status" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Status</div>
+                </div>
+                <div className="sample-col-actions"></div>
               </div>
-              <div className="samples-table-row" style={{ display: 'grid', gridTemplateColumns: '130px 1.5fr 1fr 1fr 130px', alignItems: 'center', minHeight: 48, color: '#bbb' }}>
-                <div className="sample-col-number"></div>
-                <div className="sample-col-name" style={{ textAlign: 'center', display: 'flex', alignItems: 'center', height: '100%' }}>Geen articles gevonden</div>
-                <div className="sample-col-type"></div>
-                <div className="sample-col-status"></div>
+              <div className="samples-table-row" style={{ display: 'grid', gridTemplateColumns: '1fr 130px', alignItems: 'center', minHeight: 64, color: '#bbb' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '48px 140px 1.5fr 1fr 100px 120px', padding: '0 24px', alignItems: 'center' }}>
+                  <div className="sample-col-check"></div>
+                  <div className="sample-col-number"></div>
+                  <div className="sample-col-name" style={{ textAlign: 'center' }}>Geen articles gevonden</div>
+                  <div className="sample-col-manufacturer"></div>
+                  <div className="sample-col-type"></div>
+                  <div className="sample-col-status"></div>
+                </div>
                 <div className="sample-col-actions"></div>
               </div>
             </div>
@@ -944,7 +1128,258 @@ function QualityControl() {
           loadSamples();
         }}
       />
+
+      {/* Manufacturers Management Modal */}
+      <ManufacturersModal
+        isOpen={showManufacturersModal}
+        onClose={() => setShowManufacturersModal(false)}
+        onUpdate={loadManufacturersFromDB}
+      />
+
+      </div>
     </div>
+
+      {/* Print View Section - Hidden in browser, shown in media print */}
+      <div className="print-only-container">
+        <style dangerouslySetInnerHTML={{ __html: `
+          .print-only-container { display: none; }
+          @media print {
+            @page {
+              size: A4;
+              margin: 0;
+            }
+            body { 
+              background: white !important; 
+              font-family: 'Inter', sans-serif !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            /* Hide UI components but NOT the wrappers containing the print content */
+            .no-print, nav, .top-nav, .page-header, .search-section, .category-selection, .year-selection, .season-selection, .samples-view, .modal-overlay, #status-filter { 
+              display: none !important; 
+            }
+            /* Reset wrappers to 0 margin/padding to prevent blank space */
+            .app-container, .main-layout, .main-content {
+              margin: 0 !important;
+              padding: 0 !important;
+              min-height: 0 !important;
+              background: none !important;
+            }
+            .print-only-container { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            
+            .print-page { 
+              page-break-after: always; 
+              padding: 15mm; 
+              height: 297mm; 
+              width: 210mm;
+              display: flex;
+              flex-direction: column;
+              color: #111;
+              box-sizing: border-box;
+              overflow: hidden; /* Strict one-page */
+            }
+
+            .print-top-row {
+              display: flex;
+              gap: 15px;
+              height: 240px; /* Adjusted from 180 to match new photo orientation */
+              margin-bottom: 20px;
+            }
+
+            .print-photo-container {
+              width: 180px; /* Brder */
+              height: 240px; /* Taller */
+              border: 1px solid #111;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              overflow: hidden;
+              background: #fff;
+            }
+
+            .print-info-container {
+              flex: 1;
+              border: 1px solid #111;
+              padding: 15px;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+              font-size: 13px;
+            }
+
+            .print-middle-row {
+              display: flex;
+              gap: 15px;
+              flex: 1;
+              margin-bottom: 20px;
+              min-height: 0;
+            }
+
+            .print-column {
+              flex: 1;
+              border: 1px solid #111;
+              padding: 15px;
+              display: flex;
+              flex-direction: column;
+              overflow: hidden;
+            }
+
+            .print-column-title {
+              font-weight: 900;
+              text-transform: uppercase;
+              font-size: 14px;
+              border-bottom: 2px solid #111;
+              padding-bottom: 8px;
+              margin-bottom: 15px;
+              text-align: center;
+            }
+
+            .print-assessment-list {
+              font-size: 11px;
+              flex: 1;
+              overflow: hidden;
+            }
+
+            .print-notes-container {
+              height: 120px; /* Vastgesteld */
+              border: 1px solid #111;
+              padding: 15px;
+              margin-bottom: 15px;
+            }
+
+            .print-footer-container {
+              height: 90px;
+              border: 1px solid #111;
+              padding: 15px;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+              text-align: center;
+            }
+          }
+        `}} />
+        {printSamples.map(sample => {
+          // Parse internal notes for checklist data
+          let assessment: any = { fitChecks: {}, workChecks: {}, fitComments: {}, workComments: {} };
+          try {
+            const parsed = JSON.parse(sample.internal_notes || '{}');
+            if (parsed && parsed._isJsonBlob) {
+              assessment = parsed;
+            }
+          } catch (e) {}
+
+          const mainPhoto = sample.photos?.find(p => p.is_main_photo) || (sample.photos && sample.photos[0]);
+
+          return (
+            <div key={sample.id} className="print-page">
+              {/* TOP ROW */}
+              <div className="print-top-row">
+                <div className="print-photo-container">
+                  {mainPhoto ? (
+                    <img src={mainPhoto.file_path} alt="Article" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <span style={{ fontSize: '10px', color: '#ccc' }}>FOTO</span>
+                  )}
+                </div>
+                <div className="print-info-container">
+                  <div className="print-info-item">
+                    <span className="print-info-label">Article Identification: </span>
+                    <span style={{ fontWeight: 800, fontSize: '16px' }}>{sample.sample_code}</span>
+                  </div>
+                  <div className="print-info-item">
+                    <span className="print-info-label">Article Name: </span>
+                    <span>{sample.name}</span>
+                  </div>
+                  <div className="print-info-item">
+                    <span className="print-info-label">Category: </span>
+                    <span>{sample.product_type}</span>
+                  </div>
+                  <div className="print-info-item">
+                    <span className="print-info-label">Season: </span>
+                    <span>{sample.season} {sample.year}</span>
+                  </div>
+                  <div className="print-info-item">
+                    <span className="print-info-label">Manufacturer: </span>
+                    <span style={{ fontWeight: 600 }}>{sample.supplier_name || 'N/A'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* MIDDLE ROW */}
+              <div className="print-middle-row">
+                {/* Fit Results */}
+                <div className="print-column">
+                  <div className="print-column-title">Fit Assessment</div>
+                  <div className="print-assessment-list">
+                    {Object.entries(assessment.fitChecks || {}).map(([key, value]) => {
+                      if (value === 'approve' || !value) return null;
+                      const label = value === 'reject' ? 'Rejected' : value === 'doubt' ? 'Review' : String(value);
+                      return (
+                        <div key={key} className="print-assessment-item">
+                          <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00' }}>
+                            {label}
+                          </span>
+                          <span className="print-assessment-name">{key}</span>
+                          {assessment.fitComments?.[key] && (
+                            <span className="print-assessment-comment">{assessment.fitComments[key]}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {Object.keys(assessment.fitChecks || {}).filter(k => assessment.fitChecks[k] && assessment.fitChecks[k] !== 'approve').length === 0 && (
+                      <p style={{ textAlign: 'center', opacity: 0.5, marginTop: 20 }}>No issues reported.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Manufacturer Results */}
+                <div className="print-column">
+                  <div className="print-column-title">Workmanship Assessment</div>
+                  <div className="print-assessment-list">
+                    {Object.entries(assessment.workChecks || {}).map(([key, value]) => {
+                      if (value === 'approve' || !value) return null;
+                      const label = value === 'reject' ? 'Rejected' : value === 'doubt' ? 'Review' : String(value);
+                      return (
+                        <div key={key} className="print-assessment-item" style={{ marginBottom: '8px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
+                          <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold' }}>
+                            {label}
+                          </span>
+                          <span className="print-assessment-name" style={{ fontWeight: '500' }}>{key}</span>
+                          {assessment.workComments?.[key] && (
+                            <span className="print-assessment-comment" style={{ display: 'block', fontStyle: 'italic', fontSize: '10px', marginTop: '2px' }}>{assessment.workComments[key]}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {Object.keys(assessment.workChecks || {}).filter(k => assessment.workChecks[k] && assessment.workChecks[k] !== 'approve').length === 0 && (
+                      <p style={{ textAlign: 'center', opacity: 0.5, marginTop: 20 }}>No issues reported.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* BOTTOM ROW - Internal Notes */}
+              <div className="print-notes-container">
+                <div style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: '12px', marginBottom: '8px', borderBottom: '1px solid #ddd', paddingBottom: '4px' }}>
+                  Internal Notes & Final Remarks
+                </div>
+                <div style={{ fontSize: '11px', lineHeight: '1.4' }}>
+                  {assessment.notes || (sample.internal_notes && !sample.internal_notes.includes('_isJsonBlob') ? sample.internal_notes : 'No final remarks.')}
+                </div>
+              </div>
+
+              {/* FOOTER - Thank You */}
+              <div className="print-footer-container" style={{ borderTop: '1px solid #111', background: '#fafafa' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '18px', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>Thank You</div>
+                <div style={{ fontSize: '10px', color: '#333', maxWidth: '500px', margin: '0 auto', lineHeight: '1.5' }}>
+                  We kindly ask you to review these quality control notes and apply the necessary adjustments for the next sample round. Best regards, Viktor & Rolf.
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import InternalNotesSection from '../components/InternalNotesSection';
 import { useParams, useNavigate } from 'react-router-dom';
-import { samplesAPI, photosAPI } from '../api';
+import { samplesAPI, photosAPI, manufacturersAPI } from '../api';
 import type { Sample, SamplePhoto } from '../types';
 import { getStatusBadge } from '../components/SampleHeader';
 import EditSampleModal from '../components/EditSampleModal';
@@ -26,12 +26,23 @@ function SampleDetail() {
   const [editedSampleCode, setEditedSampleCode] = useState('');
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [showManufacturerDropdown, setShowManufacturerDropdown] = useState(false);
-  const manufacturersList = ["Cousy", "ABtex", "Guay", "F&P", "5D", "AESSE"];
+  const [manufacturersList, setManufacturersList] = useState<string[]>([]);
+
+  useEffect(() => {
+    manufacturersAPI.getAll().then(res => {
+      setManufacturersList(res.data.map(m => m.name));
+    }).catch(console.error);
+  }, []);
   const [savingChecks, setSavingChecks] = useState(false);
   const [hasSavedChecks, setHasSavedChecks] = useState(false);
+  const [editModePrompt, setEditModePrompt] = useState(false);
+  const [editingField, setEditingField] = useState<'name' | 'code' | null>(null);
 
   const [fitChecks, setFitChecks] = useState<Record<string, 'reject' | 'doubt' | 'approve'>>({});
   const [workChecks, setWorkChecks] = useState<Record<string, 'reject' | 'doubt' | 'approve'>>({});
+  const [fitComments, setFitComments] = useState<Record<string, string>>({});
+  const [workComments, setWorkComments] = useState<Record<string, string>>({});
+  const [activeCommentItem, setActiveCommentItem] = useState<{ type: 'fit' | 'work', item: string } | null>(null);
 
   const [newFitItem, setNewFitItem] = useState('');
   const [newWorkItem, setNewWorkItem] = useState('');
@@ -138,7 +149,7 @@ function SampleDetail() {
     setDraggedItemInfo(null);
   };
 
-  const renderChecklist = (title: string, sections: { name: string, items: string[] }[], setStateSections: any, state: any, setState: any, Icon: any, newItemText: string, setNewItemText: any, hiddenItems: string[], setHiddenItems: any, showHidden: boolean, setShowHidden: any, selectedCategory: string, setSelectedCategory: any) => {
+  const renderChecklist = (title: string, sections: { name: string, items: string[] }[], setStateSections: any, state: any, setState: any, comments: Record<string, string>, setComments: any, Icon: any, newItemText: string, setNewItemText: any, hiddenItems: string[], setHiddenItems: any, showHidden: boolean, setShowHidden: any, selectedCategory: string, setSelectedCategory: any) => {
     const type = title.toLowerCase() === 'fit' ? 'fit' : 'work';
     const allDefaultItems = sections.reduce((acc, s) => [...acc, ...s.items], [] as string[]);
     const customItems = Object.keys(state).filter(k => !allDefaultItems.includes(k));
@@ -155,7 +166,7 @@ function SampleDetail() {
         onDrop={(e) => sectionIndex !== undefined && itemIndex !== undefined && handleDrop(e, sectionIndex, itemIndex, sections, setStateSections, type)}
         style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'minmax(0, 1fr) 90px 90px 90px', 
+          gridTemplateColumns: 'minmax(0, 1fr) 90px 90px 90px 40px', 
           gap: 16, 
           alignItems: 'center', 
           padding: '12px 0', 
@@ -165,55 +176,90 @@ function SampleDetail() {
           transition: 'background 0.2s'
         }}
       >
-        <div style={{ minWidth: 0, fontWeight: 500, fontSize: 15, display: 'flex', alignItems: 'center', color: showHidden ? '#888' : '#111' }}>
-          {showHidden ? (
-            <button
-              className="no-print"
-              onClick={() => setHiddenItems(hiddenItems.filter((i: string) => i !== item))}
-              style={{ marginRight: 8, background: 'none', border: 'none', color: '#111', cursor: 'pointer', padding: 2, display: 'flex', opacity: 0.8 }}
-              title="Restore item"
-            >
-              <Eye size={14} />
-            </button>
-          ) : (
-            <button
-              className="no-print"
-              onClick={() => setHiddenItems([...hiddenItems, item])}
-              style={{ marginRight: 8, background: 'none', border: 'none', color: '#999', cursor: 'pointer', padding: 2, display: 'flex', opacity: 0.5, transition: 'opacity 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-              onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
-              title="Hide item"
-            >
-              <EyeOff size={14} />
-            </button>
-          )}
-          <span style={{ textDecoration: showHidden ? 'line-through' : 'none', opacity: showHidden ? 0.6 : 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item}</span>
-          {isCustom && (
-            <button
-              className="no-print"
-              onClick={() => {
-                const newState = { ...state };
-                delete newState[item];
-                setState(newState);
-                
-                // Also remove from local sections state
-                const newSections = [...sections];
-                newSections.forEach((s, idx) => {
-                  if (s.items.includes(item)) {
-                    newSections[idx] = { ...s, items: s.items.filter(i => i !== item) };
-                  }
-                });
-                setStateSections(newSections);
+        <div style={{ minWidth: 0, fontWeight: 500, fontSize: 15, display: 'flex', flexDirection: 'column', color: showHidden ? '#888' : '#111' }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {!showHidden && (
+              <button
+                className="no-print"
+                onClick={() => setActiveCommentItem(activeCommentItem?.item === item && activeCommentItem?.type === type ? null : { type, item })}
+                style={{ marginRight: 8, background: 'none', border: 'none', color: comments[item] ? '#111' : '#ccc', cursor: 'pointer', padding: 2, display: 'flex', transition: 'color 0.2s' }}
+                title="Add comment"
+              >
+                <AlignLeft size={14} />
+              </button>
+            )}
+            
+            <span style={{ textDecoration: showHidden ? 'line-through' : 'none', opacity: showHidden ? 0.6 : 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item}</span>
+            <span className="print-only print-status-marker" style={{ display: 'none' }}>
+              {state[item] === 'approve' && <span className="status-approve">Approved</span>}
+              {state[item] === 'doubt' && <span className="status-doubt">Review</span>}
+              {state[item] === 'reject' && <span className="status-reject">Rejected</span>}
+              {!state[item] && <span>No result</span>}
+            </span>
+            
 
-                if (hiddenItems.includes(item)) {
-                  setHiddenItems(hiddenItems.filter((i: string) => i !== item));
-                }
-              }}
-              style={{ marginLeft: 8, flexShrink: 0, background: 'none', border: 'none', color: '#e53935', cursor: 'pointer', padding: 2, display: 'flex' }}
-              title="Remove custom item"
-            >
-              <Trash2 size={14} />
-            </button>
+            {isCustom && (
+              <button
+                className="no-print"
+                onClick={() => {
+                  const newState = { ...state };
+                  delete newState[item];
+                  setState(newState);
+                  
+                  const newComments = { ...comments };
+                  delete newComments[item];
+                  setComments(newComments);
+                  
+                  // Also remove from local sections state
+                  const newSections = [...sections];
+                  newSections.forEach((s, idx) => {
+                    if (s.items.includes(item)) {
+                      newSections[idx] = { ...s, items: s.items.filter(i => i !== item) };
+                    }
+                  });
+                  setStateSections(newSections);
+
+                  if (hiddenItems.includes(item)) {
+                    setHiddenItems(hiddenItems.filter((i: string) => i !== item));
+                  }
+                }}
+                style={{ marginLeft: 8, flexShrink: 0, background: 'none', border: 'none', color: '#e53935', cursor: 'pointer', padding: 2, display: 'flex' }}
+                title="Remove custom item"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
+          
+          {(comments[item] || (activeCommentItem?.item === item && activeCommentItem?.type === type)) && (
+            <div style={{ marginTop: 4, width: '100%' }}>
+              {activeCommentItem?.item === item && activeCommentItem?.type === type ? (
+                <input
+                  type="text"
+                  placeholder="Add a note..."
+                  value={comments[item] || ''}
+                  autoFocus
+                  onChange={(e) => setComments({ ...comments, [item]: e.target.value })}
+                  onBlur={() => !comments[item] && setActiveCommentItem(null)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') setActiveCommentItem(null);
+                  }}
+                  style={{
+                    width: '90%',
+                    fontSize: 12,
+                    padding: '4px 8px',
+                    borderRadius: 4,
+                    border: '1px solid #ddd',
+                    outline: 'none',
+                    background: '#fff'
+                  }}
+                />
+              ) : (
+                <div className="print-item-comment" style={{ fontSize: 11, color: '#666', fontStyle: 'italic', paddingLeft: 22 }}>
+                  {comments[item]}
+                </div>
+              )}
+            </div>
           )}
         </div>
 
@@ -233,6 +279,30 @@ function SampleDetail() {
           onClick={() => !showHidden && setState({ ...state, [item]: 'approve' })}
           style={{ width: 70, height: 40, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: showHidden ? 'default' : 'pointer', borderRadius: 8, background: state[item] === 'approve' ? '#e8f5e9' : '#f9f9f9', color: state[item] === 'approve' ? '#43a047' : '#ccc', border: state[item] === 'approve' ? '2px solid #43a047' : '1px solid #eee', transition: 'all 0.2s', opacity: showHidden ? 0.4 : 1 }}>
           <Check size={20} strokeWidth={state[item] === 'approve' ? 3 : 2} />
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          {showHidden ? (
+            <button
+              className="no-print"
+              onClick={() => setHiddenItems(hiddenItems.filter((i: string) => i !== item))}
+              style={{ background: 'none', border: 'none', color: '#111', cursor: 'pointer', padding: 2, display: 'flex', opacity: 0.8 }}
+              title="Restore item"
+            >
+              <Eye size={14} />
+            </button>
+          ) : (
+            <button
+              className="no-print"
+              onClick={() => setHiddenItems([...hiddenItems, item])}
+              style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', padding: 2, display: 'flex', opacity: 0.5, transition: 'opacity 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
+              title="Hide item"
+            >
+              <EyeOff size={14} />
+            </button>
+          )}
         </div>
       </div>
     );
@@ -258,11 +328,12 @@ function SampleDetail() {
           )}
         </div>
 
-        <div className="assessment-checklist-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 90px 90px 90px', gap: 16, alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: 8, marginBottom: 12, fontWeight: 600, color: '#888', fontSize: 13, textTransform: 'uppercase' }}>
+        <div className="assessment-checklist-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 90px 90px 90px 40px', gap: 16, alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: 8, marginBottom: 12, fontWeight: 600, color: '#888', fontSize: 13, textTransform: 'uppercase' }}>
           <div>Item</div>
           <div style={{ textAlign: 'center', color: '#e53935', fontSize: 11 }}>Rejected</div>
           <div style={{ textAlign: 'center', color: '#ffb300', fontSize: 11 }}>Review</div>
           <div style={{ textAlign: 'center', color: '#43a047', fontSize: 11 }}>Approved</div>
+          <div />
         </div>
 
         <div style={{ flex: 1 }}>
@@ -395,6 +466,8 @@ function SampleDetail() {
         if (parsed && typeof parsed === 'object' && parsed._isJsonBlob) {
           setFitChecks(parsed.fitChecks || {});
           setWorkChecks(parsed.workChecks || {});
+          setFitComments(parsed.fitComments || {});
+          setWorkComments(parsed.workComments || {});
           setHiddenFitItems(parsed.hiddenFitItems || []);
           setHiddenWorkItems(parsed.hiddenWorkItems || []);
         }
@@ -458,11 +531,13 @@ function SampleDetail() {
   };
 
   // Start editing title
-  const handleStartEditTitle = () => {
+  const handleStartEditTitle = (field: 'name' | 'code') => {
     if (sample) {
       setEditedName(sample.name);
       setEditedSampleCode(sample.sample_code);
+      setEditingField(field);
       setIsEditingTitle(true);
+      setEditModePrompt(false);
     }
   };
 
@@ -471,9 +546,11 @@ function SampleDetail() {
     if (!sample || !id || editedName.trim() === '' || editedSampleCode.trim() === '') return;
 
     try {
-      await samplesAPI.update(id, { name: editedName.trim(), sample_code: editedSampleCode.trim() });
-      setSample({ ...sample, name: editedName.trim(), sample_code: editedSampleCode.trim() });
+      const formattedCode = editedSampleCode.trim().toUpperCase();
+      await samplesAPI.update(id, { name: editedName.trim(), sample_code: formattedCode });
+      setSample({ ...sample, name: editedName.trim(), sample_code: formattedCode });
       setIsEditingTitle(false);
+      setEditingField(null);
     } catch (error) {
       console.error('Error updating style details:', error);
       alert('Failed to update article details');
@@ -495,6 +572,7 @@ function SampleDetail() {
   // Cancel editing title
   const handleCancelEditTitle = () => {
     setIsEditingTitle(false);
+    setEditingField(null);
     setEditedName('');
     setEditedSampleCode('');
   };
@@ -522,14 +600,135 @@ function SampleDetail() {
 
   // Nieuwe layout
   return (
-    <div className="sample-detail-modern sample-detail-fullwidth luxury-font" style={{
-      width: '100%',
-      margin: 0,
-      padding: 0,
-      minHeight: '100vh',
-      boxSizing: 'border-box',
-    }}>
-      {/* Terug knop - links boven, onder de navbar */}
+    <>
+      <style>{`
+        .print-only-container { display: none; }
+        @media print {
+          body { background: white !important; font-family: 'Inter', sans-serif !important; }
+          @page {
+            size: A4;
+            margin: 0;
+          }
+          body { 
+            background: white !important; 
+            font-family: 'Inter', sans-serif !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          /* Hide UI components but NOT the wrappers containing the print content */
+          .no-print, nav, .top-nav, .page-header, .search-section, .category-selection, .year-selection, .season-selection, .samples-view, .modal-overlay, #status-filter { 
+            display: none !important; 
+          }
+          /* Reset wrappers to 0 margin/padding to prevent blank space */
+          .app-container, .main-layout, .main-content {
+            margin: 0 !important;
+            padding: 0 !important;
+            min-height: 0 !important;
+            background: none !important;
+          }
+          .print-only-container { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+          
+          .print-page { 
+            page-break-after: always; 
+            padding: 15mm; 
+            height: 297mm; 
+            width: 210mm;
+            display: flex;
+            flex-direction: column;
+            color: #111;
+            box-sizing: border-box;
+            overflow: hidden; /* Strict one-page */
+          }
+
+          .print-top-row {
+            display: flex;
+            gap: 15px;
+            height: 240px; /* Adjusted to fix overlap */
+            margin-bottom: 20px;
+          }
+
+          .print-photo-container {
+            width: 180px; /* Bigger */
+            height: 240px; /* Taller */
+            border: 1px solid #111;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: #fff;
+          }
+
+          .print-info-container {
+            flex: 1;
+            border: 1px solid #111;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            font-size: 13px;
+          }
+
+          .print-middle-row {
+            display: flex;
+            gap: 15px;
+            flex: 1;
+            margin-bottom: 20px;
+            min-height: 0;
+          }
+
+          .print-column {
+            flex: 1;
+            border: 1px solid #111;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+          }
+
+          .print-column-title {
+            font-weight: 900;
+            text-transform: uppercase;
+            font-size: 14px;
+            border-bottom: 2px solid #111;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+          }
+
+          .print-assessment-list {
+            font-size: 11px;
+            flex: 1;
+            overflow: hidden;
+          }
+
+          .print-notes-container {
+            height: 120px; 
+            border: 1px solid #111;
+            padding: 15px;
+            margin-bottom: 15px;
+          }
+
+          .print-footer-container {
+            height: 90px;
+            border: 1px solid #111;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: center;
+          }
+        }
+      `}</style>
+      <div className="no-print">
+        <div className="sample-detail-modern sample-detail-fullwidth luxury-font" style={{
+          width: '100%',
+          margin: 0,
+          padding: 0,
+          minHeight: '100vh',
+          boxSizing: 'border-box',
+          position: 'relative'
+        }}>
+          {/* Back Button - top left, under navbar */}
 
 
       {/* Brede header */}
@@ -543,172 +742,257 @@ function SampleDetail() {
       }}>
         {/* Editable sample code and name */}
         <div style={{ flex: 1 }}>
+          <div
+            onClick={() => {
+              if (sample.collection_type && sample.year && sample.season) {
+                // Ensure the category slug matches the CATEGORY_MAP in QualityControl
+                let categorySlug = sample.collection_type.toLowerCase();
+                if (categorySlug === 'rtw' || categorySlug.includes('ready to wear')) {
+                  categorySlug = 'ready-to-wear';
+                } else if (categorySlug.includes('eyewear')) {
+                  categorySlug = 'eyewear-collection';
+                } else {
+                  categorySlug = categorySlug.replace(/ /g, '-');
+                }
+                
+                const seasonSlug = sample.season.toLowerCase();
+                navigate(`/quality-control/${categorySlug}/${sample.year}/${seasonSlug}`);
+              } else {
+                navigate('/quality-control');
+              }
+            }}
+            style={{
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '2px',
+              color: '#999',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+              marginBottom: 48,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              transition: 'color 0.2s',
+              width: 'fit-content'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#111'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#999'}
+          >
+            ← Back
+          </div>
+
           {isEditingTitle ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label style={{ fontSize: 10, fontWeight: 700, color: '#999', textTransform: 'uppercase', letterSpacing: 1 }}>Article Number</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <input
+                  type="text"
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  autoFocus={editingField === 'name'}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveTitle();
+                    if (e.key === 'Escape') handleCancelEditTitle();
+                  }}
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    letterSpacing: '2.5px',
+                    color: '#999',
+                    textTransform: 'uppercase',
+                    border: 'none',
+                    background: 'transparent',
+                    outline: 'none',
+                    padding: 0,
+                    width: '100%',
+                    fontFamily: 'inherit'
+                  }}
+                />
+                
                   <input
                     type="text"
                     value={editedSampleCode}
-                    onChange={(e) => setEditedSampleCode(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSaveTitle();
-                      if (e.key === 'Escape') handleCancelEditTitle();
-                    }}
-                    style={{
-                      fontWeight: 700,
-                      fontSize: 16,
-                      letterSpacing: 1,
-                      color: '#111',
-                      border: 'none',
-                      borderBottom: '1px solid #111',
-                      background: 'transparent',
-                      outline: 'none',
-                      padding: '4px 0',
-                      width: 180,
-                      textTransform: 'uppercase'
-                    }}
-                  />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
-                  <label style={{ fontSize: 10, fontWeight: 700, color: '#999', textTransform: 'uppercase', letterSpacing: 1 }}>Article Description</label>
-                  <input
-                    type="text"
-                    value={editedName}
-                    onChange={(e) => setEditedName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSaveTitle();
-                      if (e.key === 'Escape') handleCancelEditTitle();
-                    }}
-                    autoFocus
-                    style={{
-                      fontWeight: 300,
-                      fontSize: 32,
-                      letterSpacing: '-0.2px',
-                      color: '#111',
-                      border: 'none',
-                      borderBottom: '1px solid #111',
-                      background: 'transparent',
-                      outline: 'none',
-                      padding: '4px 0',
-                      width: '100%',
-                    }}
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignSelf: 'flex-end', paddingBottom: 8 }}>
-                  <button
-                    onClick={handleSaveTitle}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 36,
-                      height: 36,
-                      borderRadius: '50%',
-                      border: 'none',
-                      background: '#111',
-                      cursor: 'pointer',
-                      color: '#fff',
-                    }}
-                    title="Save"
-                  >
-                    <Check size={18} />
-                  </button>
-                  <button
-                    onClick={handleCancelEditTitle}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 36,
-                      height: 36,
-                      borderRadius: '50%',
-                      border: '1px solid #ddd',
-                      background: '#fff',
-                      cursor: 'pointer',
-                      color: '#666',
-                    }}
-                    title="Cancel"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
+                    onChange={(e) => setEditedSampleCode(e.target.value.toUpperCase())}
+                    autoFocus={editingField === 'code'}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveTitle();
+                    if (e.key === 'Escape') handleCancelEditTitle();
+                  }}
+                  style={{
+                    fontSize: '48px',
+                    fontWeight: 300,
+                    margin: 0,
+                    color: '#111',
+                    letterSpacing: '-0.5px',
+                    lineHeight: 1.1,
+                    border: 'none',
+                    background: 'transparent',
+                    outline: 'none',
+                    padding: 0,
+                    width: '100%',
+                    textTransform: 'uppercase',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+                <button
+                  onClick={handleSaveTitle}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 16px',
+                    borderRadius: 20,
+                    background: '#111',
+                    color: '#fff',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}
+                >
+                  <Save size={14} /> Save Changes
+                </button>
+                <button
+                  onClick={handleCancelEditTitle}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 20,
+                    background: '#f5f5f5',
+                    color: '#666',
+                    border: '1px solid #ddd',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           ) : (
-            <div 
-              style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: 4, 
-                padding: '4px 8px',
-                marginLeft: -8,
+            <div
+              onClick={() => setEditModePrompt(true)}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                cursor: 'pointer',
                 borderRadius: 8,
+                transition: 'all 0.2s',
+                position: 'relative',
+                width: 'fit-content',
+                marginLeft: -8,
+                padding: '4px 8px'
               }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              title="Click to edit article details"
             >
-              <div
-                onClick={() => {
-                  if (sample.collection_type && sample.year && sample.season) {
-                    const categorySlug = sample.collection_type.toLowerCase().replace(/ /g, '-');
-                    const seasonSlug = sample.season.toLowerCase();
-                    navigate(`/quality-control/${categorySlug}/${sample.year}/${seasonSlug}`);
-                  } else {
-                    navigate('/quality-control');
-                  }
-                }}
-                style={{
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  letterSpacing: '2px',
-                  color: '#999',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  marginBottom: 48,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  transition: 'color 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#111'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#999'}
-              >
-                ← Back
-              </div>
-              <div
-                onClick={handleStartEditTitle}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 4,
-                  cursor: 'pointer',
-                  borderRadius: 4,
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#f9f9f9'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                title="Click to edit article details"
-              >
-                <span style={{ 
-                  fontSize: '13px', 
-                  fontWeight: 700, 
-                  letterSpacing: '2.5px', 
-                  color: '#999', 
-                  textTransform: 'uppercase' 
-                }}>
-                  {sample.sample_code}
-                </span>
-                <h1 style={{ 
-                  fontSize: '48px', 
-                  fontWeight: 300, 
-                  margin: 0, 
-                  color: '#111', 
-                  letterSpacing: '-0.5px',
-                  lineHeight: 1.1
-                }}>
-                  {sample.name}
-                </h1>
-              </div>
+              <span style={{ 
+                fontSize: '13px', 
+                fontWeight: 700, 
+                letterSpacing: '2.5px', 
+                color: '#999', 
+                textTransform: 'uppercase' 
+              }}>
+                {sample.name}
+              </span>
+              <h1 style={{ 
+                fontSize: '48px', 
+                fontWeight: 300, 
+                margin: 0, 
+                color: '#111', 
+                letterSpacing: '-0.5px',
+                lineHeight: 1.1
+              }}>
+                {sample.sample_code}
+              </h1>
+
+              {/* Selection Prompt */}
+              {editModePrompt && (
+                <>
+                  <div 
+                    onClick={(e) => { e.stopPropagation(); setEditModePrompt(false); }}
+                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 }}
+                  />
+                  <div 
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      marginTop: 12,
+                      background: '#fff',
+                      border: '1px solid #eee',
+                      borderRadius: 12,
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                      padding: 20,
+                      zIndex: 1001,
+                      width: 300,
+                    }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <button 
+                        onClick={() => handleStartEditTitle('name')}
+                        style={{
+                          padding: '12px 16px',
+                          background: '#f9f9f9',
+                          border: '1px solid #eee',
+                          borderRadius: 8,
+                          textAlign: 'left',
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#f0f0f0'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#f9f9f9'}
+                      >
+                        Article Description <Pencil size={14} opacity={0.5} />
+                      </button>
+                      <button 
+                        onClick={() => handleStartEditTitle('code')}
+                        style={{
+                          padding: '12px 16px',
+                          background: '#f9f9f9',
+                          border: '1px solid #eee',
+                          borderRadius: 8,
+                          textAlign: 'left',
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#f0f0f0'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#f9f9f9'}
+                      >
+                        Article Number <Tag size={14} opacity={0.5} />
+                      </button>
+                      <button 
+                        onClick={() => setEditModePrompt(false)}
+                        style={{
+                          padding: '8px 16px',
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#999',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          marginTop: 4
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -775,22 +1059,46 @@ function SampleDetail() {
       {/* Layout: Top section met fotos (links) en info (rechts) */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: '0 16px 48px 16px' }}>
 
-        <div className="print-page-box" style={{ display: 'block' }}>
-          
           {/* Print Only Header Display */}
-          <div className="print-only print-title-header" style={{ display: 'none', textAlign: 'center', marginBottom: '40px', width: '100%' }}>
-            <h1 className="page-title" style={{ margin: 0, fontSize: '48px', fontWeight: 300, color: '#111', letterSpacing: '-0.5px' }}>Article Details</h1>
-            <h1 style={{ fontSize: '32px', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 4px 0', color: '#111' }}>
+          <div className="print-only style-header-content" style={{ display: 'none', marginBottom: '24px', width: '100%' }}>
+            <h1 style={{ fontSize: '36px', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 4px 0', color: '#111' }}>
               {sample.sample_code}
             </h1>
-            <div style={{ fontSize: '22px', fontWeight: 600, letterSpacing: '0.5px', color: '#333', textTransform: 'uppercase', marginBottom: '8px' }}>
-              {sample.name}
+            <div style={{ fontSize: '18px', fontWeight: 600, letterSpacing: '0.5px', color: '#555', textTransform: 'uppercase' }}>
+              {sample.name} - Quality Control Report
             </div>
           </div>
 
-          <div className="print-top-section" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'stretch' }}>
+          <div className="print-only print-info-summary" style={{ display: 'none' }}>
+            <div className="print-info-item">
+              <div className="print-info-label">Article Code</div>
+              <div className="print-info-value">{sample.sample_code}</div>
+            </div>
+            <div className="print-info-item">
+              <div className="print-info-label">Category</div>
+              <div className="print-info-value">{sample.product_type}</div>
+            </div>
+            <div className="print-info-item">
+              <div className="print-info-label">Manufacturer</div>
+              <div className="print-info-value">{sample.supplier_name || '—'}</div>
+            </div>
+            <div className="print-info-item">
+              <div className="print-info-label">Season & Year</div>
+              <div className="print-info-value">{sample.season} {sample.year}</div>
+            </div>
+            <div className="print-info-item">
+              <div className="print-info-label">Status</div>
+              <div className="print-info-value">{sample.status}</div>
+            </div>
+            <div className="print-info-item">
+              <div className="print-info-label">Responsible</div>
+              <div className="print-info-value">{sample.responsible_user_name || '—'}</div>
+            </div>
+          </div>
+
+          <div className="print-top-section" style={{ display: 'grid', gridTemplateColumns: photos.length > 0 ? '1fr 1fr' : '1fr', gap: 24, alignItems: 'stretch' }}>
           {/* Linker kolom: Photos */}
-          <div className="luxury-card" style={{ border: '1px solid #eee', borderRadius: 12, background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.03)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div className="luxury-card no-print" style={{ border: '1px solid #eee', borderRadius: 12, background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.03)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <div style={{ flex: 1, display: 'grid', gridTemplateColumns: photos.length === 1 ? '1fr' : '1fr 1fr', gap: 2, background: '#f5f5f5', minHeight: 400 }}>
               {photos.length > 0 ? (
                 photos.slice(0, 2).map((photo, index) => {
@@ -987,6 +1295,11 @@ function SampleDetail() {
                 <div style={{ fontWeight: 500, color: '#111', fontSize: 18 }}>{sample.responsible_user_name || '—'}</div>
               </div>
 
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}><Tag size={14} /> Article Code</div>
+                <div style={{ fontWeight: 600, color: '#111', fontSize: 18, fontFamily: 'monospace' }}>{sample.sample_code}</div>
+              </div>
+
               <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}><AlignLeft size={14} /> Style Notes</div>
                 <div style={{ fontSize: 18, color: '#111', fontWeight: 500, lineHeight: 1.5, fontStyle: 'italic' }}>
@@ -1025,7 +1338,7 @@ function SampleDetail() {
           {/* Checklijst secties */}
           <div className="assessment-checklists-container" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 24, marginBottom: 12 }}>
             <div className="print-page-box print-fit-box">
-              {renderChecklist('Fit', fitSections, setFitSections, fitChecks, setFitChecks, Ruler, newFitItem, setNewFitItem, hiddenFitItems, setHiddenFitItems, showHiddenFit, setShowHiddenFit, selectedFitCategory, setSelectedFitCategory)}
+              {renderChecklist('Fit', fitSections, setFitSections, fitChecks, setFitChecks, fitComments, setFitComments, Ruler, newFitItem, setNewFitItem, hiddenFitItems, setHiddenFitItems, showHiddenFit, setShowHiddenFit, selectedFitCategory, setSelectedFitCategory)}
             </div>
             <div className="print-page-box print-work-box">
               <div className="print-only print-flex-row" style={{ display: 'none', alignItems: 'center', gap: 12, marginBottom: 24, borderBottom: '2px solid #e9ecef', paddingBottom: 16 }}>
@@ -1036,7 +1349,7 @@ function SampleDetail() {
                   <h2 style={{ fontSize: 24, fontWeight: 700, margin: 0, letterSpacing: 0.5, color: '#111' }}>Quality Control Assessment</h2>
                 </div>
               </div>
-              {renderChecklist('Workmanship', workSections, setWorkSections, workChecks, setWorkChecks, Scissors, newWorkItem, setNewWorkItem, hiddenWorkItems, setHiddenWorkItems, showHiddenWork, setShowHiddenWork, selectedWorkCategory, setSelectedWorkCategory)}
+              {renderChecklist('Workmanship', workSections, setWorkSections, workChecks, setWorkChecks, workComments, setWorkComments, Scissors, newWorkItem, setNewWorkItem, hiddenWorkItems, setHiddenWorkItems, showHiddenWork, setShowHiddenWork, selectedWorkCategory, setSelectedWorkCategory)}
             </div>
           </div>
 
@@ -1046,7 +1359,7 @@ function SampleDetail() {
               onClick={async () => {
                 setSavingChecks(true);
                 try {
-                  let parsed = { _isJsonBlob: true, notes: '', fitChecks: {}, workChecks: {}, hiddenFitItems: [], hiddenWorkItems: [] };
+                  let parsed = { _isJsonBlob: true, notes: '', fitChecks: {}, workChecks: {}, fitComments: {}, workComments: {}, hiddenFitItems: [], hiddenWorkItems: [] };
                   try {
                     const existing = JSON.parse(sample?.internal_notes || '{}');
                     if (existing && typeof existing === 'object' && existing._isJsonBlob) {
@@ -1060,6 +1373,8 @@ function SampleDetail() {
 
                   parsed.fitChecks = fitChecks;
                   parsed.workChecks = workChecks;
+                  parsed.fitComments = fitComments;
+                  parsed.workComments = workComments;
                   parsed.hiddenFitItems = hiddenFitItems as any;
                   parsed.hiddenWorkItems = hiddenWorkItems as any;
 
@@ -1109,22 +1424,15 @@ function SampleDetail() {
           </div>
 
           {/* Internal Notes in een full-width block eronder */}
-          <div className="luxury-card print-page-box print-notes-box" style={{ border: '1px solid #eee', borderRadius: 12, background: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', padding: 24, display: 'flex', flexDirection: 'column', marginBottom: 32 }}>
+          <div className="luxury-card no-print" style={{ border: '1px solid #eee', borderRadius: 12, background: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', padding: 24, display: 'flex', flexDirection: 'column', marginBottom: 32 }}>
             <h3 className="luxury-card-title" style={{ fontWeight: 600, fontSize: 18, letterSpacing: 1, marginBottom: 16 }}>Internal Notes & Final Remarks</h3>
             <InternalNotesSection sample={sample} />
-
-            {/* Print Only Thank You Closing */}
-            <div className="print-only thank-you-block" style={{ display: 'none', marginTop: 'auto', paddingTop: 40, borderTop: '2px dotted #ccc', textAlign: 'center', color: '#111' }}>
-              <h2 style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', letterSpacing: 1, fontSize: 32, marginBottom: 16 }}>Thank You</h2>
-              <p style={{ fontSize: 16, maxWidth: 600, margin: '0 auto', lineHeight: 1.6, color: '#555' }}>We kindly ask you to review these quality control notes and apply the necessary adjustments for the next sample round. Best regards,</p>
-              <h4 style={{ marginTop: 24, fontSize: 14, textTransform: 'uppercase', letterSpacing: 2 }}>Viktor & Rolf</h4>
-            </div>
           </div>
 
         </div>
 
         {/* Download QC PDF Button */}
-        <div className="no-print" style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+        <div className="no-print" style={{ display: 'flex', justifyContent: 'center', marginTop: 16, paddingBottom: 60 }}>
           <button
             onClick={handleDownloadPDF}
             style={{
@@ -1158,7 +1466,6 @@ function SampleDetail() {
             Download QC PDF
           </button>
         </div>
-      </div>
 
       {/* Lightbox Modal voor alle fotos */}
       {showLightbox && photos.length > 0 && (
@@ -1325,7 +1632,125 @@ function SampleDetail() {
         sample={sample}
         onSampleUpdated={() => typeof sample.id === 'string' ? loadSample(sample.id) : undefined}
       />
-    </div>
+        </div>
+      </div>
+
+      {/* Unified Print Layout Container (Hidden in browser) */}
+      <div className="print-only-container">
+        <div key={sample.id} className="print-page">
+          {/* TOP ROW */}
+          <div className="print-top-row">
+            <div className="print-photo-container">
+              {photos.length > 0 ? (
+                <img src={photos.find(p => p.is_main_photo)?.file_path || photos[0].file_path} alt="Article" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <span style={{ fontSize: '10px', color: '#ccc' }}>FOTO</span>
+              )}
+            </div>
+            <div className="print-info-container">
+              <div className="print-info-item">
+                <span className="print-info-label">Article Identification: </span>
+                <span style={{ fontWeight: 800, fontSize: '16px' }}>{sample.sample_code}</span>
+              </div>
+              <div className="print-info-item">
+                <span className="print-info-label">Article Name: </span>
+                <span>{sample.name}</span>
+              </div>
+              <div className="print-info-item">
+                <span className="print-info-label">Category: </span>
+                <span>{sample.product_type}</span>
+              </div>
+              <div className="print-info-item">
+                <span className="print-info-label">Season: </span>
+                <span>{sample.season} {sample.year}</span>
+              </div>
+              <div className="print-info-item">
+                <span className="print-info-label">Manufacturer: </span>
+                <span style={{ fontWeight: 600 }}>{sample.supplier_name || 'N/A'}</span>
+              </div>
+              <div className="print-info-item">
+                <span className="print-info-label">Style Note: </span>
+                <span>{sample.tags || '—'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* MIDDLE ROW */}
+          <div className="print-middle-row">
+            {/* Fit Results */}
+            <div className="print-column">
+              <div className="print-column-title">Fit Assessment</div>
+              <div className="print-assessment-list">
+                {Object.keys(fitChecks).map(key => {
+                  const value = fitChecks[key];
+                  if (value === 'approve' || !value) return null;
+                  const label = value === 'reject' ? 'Rejected' : value === 'doubt' ? 'Review' : String(value);
+                  return (
+                    <div key={key} className="print-assessment-item" style={{ marginBottom: '8px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
+                      <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold' }}>
+                        {label}
+                      </span>
+                      <span className="print-assessment-name" style={{ fontWeight: '500' }}>{key}</span>
+                      {fitComments[key] && (
+                        <span className="print-assessment-comment" style={{ display: 'block', fontStyle: 'italic', fontSize: '10px', marginTop: '2px' }}>{fitComments[key]}</span>
+                      )}
+                    </div>
+                  );
+                })}
+                {Object.keys(fitChecks).filter(k => fitChecks[k] && fitChecks[k] !== 'approve').length === 0 && (
+                  <p style={{ textAlign: 'center', opacity: 0.5, marginTop: 20 }}>No issues reported.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Manufacturer Results */}
+            <div className="print-column">
+              <div className="print-column-title">Workmanship Assessment</div>
+              <div className="print-assessment-list">
+                {Object.entries(workChecks).map(([key, value]) => {
+                  if (value === 'approve' || !value) return null;
+                  const label = value === 'reject' ? 'Rejected' : value === 'doubt' ? 'Review' : String(value);
+                  return (
+                    <div key={key} className="print-assessment-item" style={{ marginBottom: '8px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
+                      <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold' }}>
+                        {label}
+                      </span>
+                      <span className="print-assessment-name" style={{ fontWeight: '500' }}>{key}</span>
+                      {workComments[key] && (
+                        <span className="print-assessment-comment" style={{ display: 'block', fontStyle: 'italic', fontSize: '10px', marginTop: '2px' }}>{workComments[key]}</span>
+                      )}
+                    </div>
+                  );
+                })}
+                {Object.keys(workChecks).filter(k => workChecks[k] && workChecks[k] !== 'approve').length === 0 && (
+                  <p style={{ textAlign: 'center', opacity: 0.5, marginTop: 20 }}>No issues reported.</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* BOTTOM ROW - Internal Notes */}
+          <div className="print-notes-container">
+            <div style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: '12px', marginBottom: '8px', borderBottom: '1px solid #ddd', paddingBottom: '4px' }}>
+              Internal Notes & Final Remarks
+            </div>
+            <div style={{ fontSize: '11px', lineHeight: '1.4' }}>
+              {(sample.internal_notes && sample.internal_notes.includes('_isJsonBlob')) 
+                ? JSON.parse(sample.internal_notes).notes 
+                : sample.internal_notes || 'No final remarks.'}
+            </div>
+          </div>
+
+          {/* FOOTER - Thank You */}
+          <div className="print-footer-container" style={{ borderTop: '1px solid #111', background: '#fafafa' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '18px', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>Thank You</div>
+            <div style={{ fontSize: '10px', color: '#333', maxWidth: '500px', margin: '0 auto', lineHeight: '1.5' }}>
+              We kindly ask you to review these quality control notes and apply the necessary adjustments for the next sample round. Best regards, Viktor & Rolf.
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 

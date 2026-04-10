@@ -101,7 +101,7 @@ function CollectionDetail() {
           <table className="table">
             <thead>
               <tr>
-                <th>Article Number</th>
+                <th>Article Code</th>
                 <th>Article Description</th>
                 <th>Status</th>
                 <th>Responsible</th>
