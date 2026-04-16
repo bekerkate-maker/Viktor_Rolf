@@ -231,7 +231,7 @@ function QualityControl() {
       const collectionIds = Array.from(new Set(manufacturerSamples.map(s => s.collection_id)));
       
       const allCollections = await fetchCollectionsCached();
-      const filtered = allCollections.filter(c => collectionIds.includes(c.id));
+      const filtered = allCollections.filter((c: any) => collectionIds.includes(c.id));
       
       setManufacturerCollections(filtered);
     } catch (err) {
@@ -261,7 +261,7 @@ function QualityControl() {
     
     try {
       setLoading(true);
-      console.log('Loading samples for collections:', collections.map(c => c.id));
+      console.log('Loading samples for collections:', collections.map((c: any) => c.id));
       
       // Get samples from all collections in parallel for better performance
       const samplePromises = collections.map(collection => 
