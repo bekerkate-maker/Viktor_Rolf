@@ -300,7 +300,7 @@ function QualityControl() {
 
       const selCat = category.trim().toLowerCase();
       
-      const years = [...new Set(
+      const years = Array.from(new Set(
         data
           .filter((col: Collection) => {
             if (!col.category) return false;
@@ -310,7 +310,7 @@ function QualityControl() {
           })
           .map((col: Collection) => Number(col.year))
           .filter(year => !isNaN(year))
-      ) as number[]].sort((a: number, b: number) => b - a);
+      ) as Set<number>).sort((a, b) => b - a);
 
       console.log(`Available years for ${category}:`, years);
 
