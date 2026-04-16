@@ -310,7 +310,7 @@ function QualityControl() {
           })
           .map((col: Collection) => Number(col.year))
           .filter(year => !isNaN(year))
-      )].sort((a, b) => b - a);
+      ) as number[]].sort((a: number, b: number) => b - a);
 
       console.log(`Available years for ${category}:`, years);
 
@@ -514,6 +514,14 @@ function QualityControl() {
       setSelectedSampleIds([]);
     } else {
       setSelectedSampleIds(filteredSamples.map(s => s.id));
+    }
+  };
+
+  const handleSelectSample = (e: React.ChangeEvent<HTMLInputElement>, id: number) => {
+    if (e.target.checked) {
+      setSelectedSampleIds(prev => [...prev, id]);
+    } else {
+      setSelectedSampleIds(prev => prev.filter(sid => sid !== id));
     }
   };
 

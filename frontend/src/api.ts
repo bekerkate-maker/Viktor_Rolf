@@ -3,10 +3,9 @@ import type {
   Collection,
   Sample,
   QualityReview,
-
   User,
   QualityReviewStats,
-
+  SupplierCommunication
 } from './types';
 
 const API_BASE_URL = '/api';
@@ -172,6 +171,28 @@ export const manufacturersAPI = {
   create: (name: string) => api.post<Manufacturer>('/manufacturers', { name }),
   update: (id: string, name: string, oldName?: string) => api.put<Manufacturer>(`/manufacturers/${id}`, { name, oldName }),
   delete: (id: string) => api.delete(`/manufacturers/${id}`),
+};
+
+// Supplier Communications
+export const supplierCommsAPI = {
+  getAll: (params?: { sample_id?: string; status?: string; supplier_name?: string }) =>
+    api.get<SupplierCommunication[]>('/supplier-communications', { params }),
+  getById: (id: number) => api.get<SupplierCommunication>(`/supplier-communications/${id}`),
+  create: (data: Partial<SupplierCommunication>) =>
+    api.post<SupplierCommunication>('/supplier-communications', data),
+  update: (id: number, data: Partial<SupplierCommunication>) =>
+    api.put<SupplierCommunication>(`/supplier-communications/${id}`, data),
+  delete: (id: number) => api.delete(`/supplier-communications/${id}`),
+  uploadAttachments: (id: number, files: File[]) => {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('attachments', file));
+    return api.post(`/supplier-communications/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  deleteAttachment: (commId: number, attachmentId: number) =>
+    api.delete(`/supplier-communications/${commId}/attachments/${attachmentId}`),
+  getStats: () => api.get('/supplier-communications/stats/overview'),
 };
 
 export default api;

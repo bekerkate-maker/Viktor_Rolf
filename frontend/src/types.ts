@@ -38,6 +38,8 @@ export interface Sample {
   feedback_deadline?: string;
   internal_notes?: string;
   tags?: string;
+  sample_round?: string;
+  latest_comment_date?: string;
   created_at: string;
   updated_at: string;
   collection_name?: string;
@@ -154,3 +156,25 @@ export interface QualityReviewStats {
 }
 
 
+
+export interface SupplierCommunication {
+  id: number;
+  sample_id: number;
+  supplier_name: string;
+  communication_date: string;
+  communication_type: 'Email' | 'Call' | 'Meeting';
+  summary: string;
+  sample_due_date?: string;
+  feedback_due_date?: string;
+  status: 'Waiting for Supplier' | 'Waiting for Internal Feedback' | 'Completed';
+  is_important: boolean;
+  created_by: number;
+  created_at: string;
+  updated_at: string;
+  sample_code?: string;
+  sample_name?: string;
+  collection_name?: string;
+  created_by_name?: string;
+  created_by_email?: string;
+  attachments?: any[];
+}
