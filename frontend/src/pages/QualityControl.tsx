@@ -56,7 +56,13 @@ export function fetchCollectionsCached(force = false) {
 }
 
 function QualityControl() {
-  const params = useParams<{ category?: string; year?: string; season?: string }>();
+  const params = useParams<{ 
+    category?: string; 
+    year?: string; 
+    season?: string;
+    manufacturer?: string;
+    collectionId?: string;
+  }>();
   const navigate = useNavigate();
 
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
@@ -66,6 +72,10 @@ function QualityControl() {
   const [samples, setSamples] = useState<Sample[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedManufacturer, setSelectedManufacturer] = useState<string | null>(null);
+  const [manufacturerCollections, setManufacturerCollections] = useState<Collection[]>([]);
+  const [selectedPreviewSample, setSelectedPreviewSample] = useState<Sample | null>(null);
+  const [previewPhotos, setPreviewPhotos] = useState<any[]>([]);
 
   // Prefetch collections on mount so navigating to years is instant
   useEffect(() => {
@@ -107,7 +117,13 @@ function QualityControl() {
     if (newSeasonVal !== selectedSeason) {
       setSelectedSeason(newSeasonVal);
     }
-  }, [params.category, params.year, params.season]);
+    // 4. Sync Manufacturer
+    if (params.manufacturer && params.manufacturer !== selectedManufacturer) {
+      setSelectedManufacturer(params.manufacturer);
+    } else if (!params.manufacturer && selectedManufacturer) {
+      setSelectedManufacturer(null);
+    }
+  }, [params.category, params.year, params.season, params.manufacturer]);
 
   // Load available years whenever selectedCategory changes
   useEffect(() => {
@@ -120,14 +136,23 @@ function QualityControl() {
 
   // Load collections when category, year and season are selected
   useEffect(() => {
-    if (selectedCategory && selectedYear && selectedSeason) {
+    if (params.collectionId) {
+      loadCollectionById(params.collectionId);
+    } else if (selectedCategory && selectedYear && selectedSeason) {
       loadCollections();
     } else {
       setCollections([]);
       setSamples([]);
       setSelectedSampleIds([]);
     }
-  }, [selectedCategory, selectedYear, selectedSeason]);
+  }, [selectedCategory, selectedYear, selectedSeason, params.collectionId]);
+
+  // Load collections for selected manufacturer
+  useEffect(() => {
+    if (selectedManufacturer) {
+      loadCollectionsForManufacturer();
+    }
+  }, [selectedManufacturer]);
 
   // Load samples when we have the data
   useEffect(() => {
@@ -136,12 +161,15 @@ function QualityControl() {
     } else {
       setSamples([]);
     }
-  }, [collections]);
+  }, [collections, params.manufacturer]); // Reload samples when manufacturer changes
 
   // Load available manufacturers
   useEffect(() => {
-    loadManufacturersFromDB();
-  }, [samples]);
+    // Only fetch if we are on the home page or need them for the modal
+    if (!selectedCategory || showManufacturersModal) {
+      loadManufacturersFromDB();
+    }
+  }, [selectedCategory, showManufacturersModal]);
 
   const loadManufacturersFromDB = async () => {
     try {
@@ -188,6 +216,40 @@ function QualityControl() {
     } catch (error) {
       console.error('Error loading collections:', error);
       setLoading(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadCollectionsForManufacturer = async () => {
+    if (!selectedManufacturer) return;
+    try {
+      setLoading(true);
+      // Fetch all samples for this manufacturer to find collections
+      const res = await samplesAPI.getAll();
+      const manufacturerSamples = res.data.filter(s => s.supplier_name === selectedManufacturer);
+      const collectionIds = Array.from(new Set(manufacturerSamples.map(s => s.collection_id)));
+      
+      const allCollections = await fetchCollectionsCached();
+      const filtered = allCollections.filter(c => collectionIds.includes(c.id));
+      
+      setManufacturerCollections(filtered);
+    } catch (err) {
+      console.error('Error loading manufacturer collections:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadCollectionById = async (id: string) => {
+    try {
+      setLoading(true);
+      const res = await collectionsAPI.getById(id);
+      setCollections([res.data]);
+    } catch (err) {
+      console.error('Error loading single collection:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -207,9 +269,14 @@ function QualityControl() {
       );
       
       const responses = await Promise.all(samplePromises);
-      const allSamples: Sample[] = responses.flatMap(res => res.data);
+      let allSamples: Sample[] = responses.flatMap(res => res.data);
       
-      console.log('All samples loaded:', allSamples.length);
+      // If we are in manufacturer mode, filter samples by that manufacturer
+      if (params.manufacturer) {
+        allSamples = allSamples.filter(s => s.supplier_name === params.manufacturer);
+      }
+      
+      console.log('All samples loaded (filtered):', allSamples.length);
       setSamples(allSamples);
     } catch (error) {
       console.error('Error loading samples:', error);
@@ -422,11 +489,24 @@ function QualityControl() {
     }
   };
 
-  const handleSelectSample = (e: React.ChangeEvent<HTMLInputElement>, id: number) => {
-    e.stopPropagation();
-    setSelectedSampleIds(prev =>
-      prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
-    );
+  const handleBackToMain = () => {
+    setSelectedManufacturer(null);
+    setManufacturerCollections([]);
+    navigate('/quality-control');
+  };
+
+  const handleBackToManufacturer = () => {
+    navigate(`/quality-control/manufacturer/${params.manufacturer}`);
+  };
+
+  const handleOpenPreview = async (sample: Sample) => {
+    setSelectedPreviewSample(sample);
+    try {
+      const res = await photosAPI.getPhotos(String(sample.id));
+      setPreviewPhotos(res.data);
+    } catch (err) {
+      console.error('Error loading preview photos:', err);
+    }
   };
 
   const handleSelectAll = (filteredSamples: Sample[]) => {
@@ -435,6 +515,98 @@ function QualityControl() {
     } else {
       setSelectedSampleIds(filteredSamples.map(s => s.id));
     }
+  };
+
+  const handleExportExcel = () => {
+    if (samples.length === 0) return;
+
+    // Create HTML Table Content for pseudo-XLS
+    const headers = [
+      'Article Code', 
+      'Name', 
+      'Status', 
+      'Last Comment', 
+      'Responsible', 
+      'Rejected Fit Items', 
+      'Rejected Workmanship Items'
+    ];
+
+    const tableRows = samples.map(s => {
+      let rejectedFit = '';
+      let rejectedWork = '';
+      
+      if (s.internal_notes) {
+        try {
+          const parsed = JSON.parse(s.internal_notes);
+          if (parsed && parsed._isJsonBlob) {
+            rejectedFit = Object.entries(parsed.fitChecks || {})
+              .filter(([_, v]) => v === 'reject')
+              .map(([k, _]) => k)
+              .join(', ');
+            rejectedWork = Object.entries(parsed.workChecks || {})
+              .filter(([_, v]) => v === 'reject')
+              .map(([k, _]) => k)
+              .join(', ');
+          }
+        } catch (e) {}
+      }
+
+      return `
+        <tr>
+          <td>${s.sample_code}</td>
+          <td>${s.name}</td>
+          <td>${s.status}</td>
+          <td>${s.latest_comment || ''}</td>
+          <td>${s.responsible_user_name || ''}</td>
+          <td>${rejectedFit}</td>
+          <td>${rejectedWork}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const htmlContent = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8">
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>${selectedManufacturer || 'Export'}</x:Name>
+                <x:WorksheetOptions>
+                  <x:DisplayGridlines/>
+                </x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+      </head>
+      <body>
+        <table>
+          <thead>
+            <tr>
+              ${headers.map(h => `<th style="background-color: #f2f2f2; border: 1px solid #ddd; font-weight: bold;">${h}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${selectedManufacturer}_${collections[0]?.name || 'export'}.xls`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleExportPDF = async () => {
@@ -472,10 +644,18 @@ function QualityControl() {
       <div className="no-print">
         <div className="quality-control-page luxury-font" style={{ padding: '0 24px' }}>
       {/* Terug knop - links boven, onder de navbar */}
-      {selectedCategory && (
+      {(selectedCategory || selectedManufacturer || params.collectionId) && (
         <div style={{ paddingTop: 32, paddingLeft: 0 }}>
           <div
-            onClick={handleBack}
+            onClick={() => {
+              if (params.collectionId && params.manufacturer) {
+                handleBackToManufacturer();
+              } else if (selectedManufacturer && !selectedCategory) {
+                handleBackToMain();
+              } else {
+                handleBack();
+              }
+            }}
             style={{
               fontSize: '10px',
               fontWeight: 700,
@@ -497,17 +677,40 @@ function QualityControl() {
         </div>
       )}
 
-      <div className="page-header" style={{ marginTop: selectedCategory ? 16 : 48 }}>
-        <h1 className="page-title" style={{ margin: 0 }}>Quality Control</h1>
-        <p className="page-subtitle">
-          {!selectedCategory ? 'Select category and collection to review articles' :
-            !selectedYear ? `Select ${selectedCategory} year` :
-              'Review articles'}
-        </p>
+      <div className="page-header" style={{ 
+        marginTop: (selectedCategory || selectedManufacturer || params.collectionId) ? 16 : 48,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start'
+      }}>
+        <div>
+          <h1 className="page-title" style={{ margin: 0 }}>
+            {params.collectionId && params.manufacturer ? `${params.manufacturer} - Articles` :
+             selectedManufacturer ? `Manufacturer: ${selectedManufacturer}` : 
+             'Quality Control'}
+          </h1>
+          <p className="page-subtitle">
+            {params.collectionId && params.manufacturer ? `Articles for ${collections[0]?.name || 'Collection'}` :
+             selectedManufacturer ? 'Browse productions for this manufacturer' :
+              !selectedCategory ? 'Select category and collection to review articles' :
+              !selectedYear ? `Select ${selectedCategory} year` :
+                'Review articles'}
+          </p>
+        </div>
+        {params.collectionId && params.manufacturer && (
+          <div className="action-buttons" style={{ display: 'flex', gap: 12 }}>
+            <button className="btn btn-secondary btn-small" onClick={handleExportExcel}>
+              Export Excel
+            </button>
+            <button className="btn btn-primary btn-small" onClick={() => window.print()}>
+              Export PDF
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Search Bar */}
-      {!selectedCategory && (
+      {!selectedCategory && !selectedManufacturer && !params.collectionId && (
         <div className="search-section">
           <div className="search-bar">
             <input
@@ -624,121 +827,413 @@ function QualityControl() {
         </div>
       )}
 
-      {/* Category Selection */}
-      {!selectedCategory && !searchQuery && (
-        <div className="category-selection">
-          <h2 className="section-title">Select Category</h2>
-          <div className="category-grid">
-            <div className="category-card-wrapper">
-              <div
-                className="category-card"
-                onClick={() => handleCategorySelect('Ready to Wear')}
-              >
-                <div className="category-icon">👔</div>
-                <h3>Ready to Wear</h3>
-                <p>RTW Collection</p>
-              </div>
-              {/* 3 Fashion photos onder Ready to Wear */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
-                gap: 0,
-                marginTop: 0,
-              }}>
-                <div style={{
-                  height: 200,
-                  backgroundImage: 'url(/model_front_AW_GREEN_DRESS_195481.jpg.webp)',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center top',
-                }} />
-                <div style={{
-                  height: 200,
-                  backgroundImage: 'url(/model_front_WT0140039425_4998RTW_FW25MAINDENIM_model.jpg.webp)',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center top',
-                }} />
-                <div style={{
-                  height: 200,
-                  backgroundImage: 'url(/model_front_WO0060099425_3759RTW_FW25MAINDENIM_model.jpg.webp)',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center top',
-                }} />
+      {/* Manufacturer Productions View */}
+      {selectedManufacturer && !params.collectionId && !selectedCategory && (
+        <div className="manufacturer-productions-view" style={{ marginTop: 24 }}>
+          {loading ? (
+            <div className="loading-state">Loading productions...</div>
+          ) : manufacturerCollections.length > 0 ? (
+            <div className="collections-list">
+              {manufacturerCollections.map(collection => (
+                <div 
+                  key={collection.id} 
+                  className="collection-item"
+                  onClick={() => {
+                    navigate(`/quality-control/manufacturer/${selectedManufacturer}/collection/${collection.id}`);
+                  }}
+                >
+                  <div>
+                    <div className="collection-item-name">{collection.name}</div>
+                    <div className="collection-item-meta">
+                      {collection.category} · {collection.season} {collection.year}
+                    </div>
+                  </div>
+                  <div className="collection-item-arrow">→</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">No productions found for this manufacturer.</div>
+          )}
+        </div>
+      )}
+
+      {/* Articles View (Manufacturer + Collection) */}
+      {params.collectionId && params.manufacturer && !loading && (
+        <div className="articles-view" style={{ marginTop: 24 }}>
+          {samples.length > 0 ? (
+            <div className="samples-list-detailed" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {samples.map((sample) => (
+                <div
+                  key={sample.id}
+                  onClick={() => handleOpenPreview(sample)}
+                  className="sample-list-item-detailed"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    background: '#fff',
+                    border: '1px solid #eee',
+                    padding: '24px',
+                    borderRadius: '4px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#000';
+                    e.currentTarget.style.transform = 'translateX(4px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#eee';
+                    e.currentTarget.style.transform = 'translateX(0)';
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <span className="sample-code" style={{ 
+                      fontSize: '11px', 
+                      fontWeight: 700, 
+                      letterSpacing: '1px', 
+                      background: '#f5f5f5', 
+                      padding: '4px 8px', 
+                      marginRight: 16 
+                    }}>
+                      {sample.sample_code}
+                    </span>
+                    <span style={{ fontSize: '18px', fontWeight: 500 }}>{sample.name}</span>
+                  </div>
+                  <div style={{ color: '#999', fontSize: '12px', letterSpacing: '1px' }}>
+                    CLICK FOR DETAILS →
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">No articles found for this manufacturer in this production.</div>
+          )}
+        </div>
+      )}
+
+      {/* Preview Modal for Manufacturer Overview */}
+      {selectedPreviewSample && (
+        <div 
+          className="preview-modal-overlay" 
+          onClick={() => setSelectedPreviewSample(null)}
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.4)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '40px'
+          }}
+        >
+          <div 
+            className="preview-modal-content" 
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff',
+              width: '100%',
+              maxWidth: '900px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              borderRadius: '8px',
+              padding: '48px',
+              position: 'relative',
+              boxShadow: '0 24px 64px rgba(0,0,0,0.15)'
+            }}
+          >
+            <button 
+              onClick={() => setSelectedPreviewSample(null)}
+              style={{
+                position: 'absolute',
+                top: 24, right: 24,
+                background: 'none', border: 'none',
+                fontSize: '24px', cursor: 'pointer', color: '#999'
+              }}
+            >
+              ×
+            </button>
+
+            <div style={{ marginBottom: 40 }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '2px', color: '#999', textTransform: 'uppercase' }}>
+                {selectedPreviewSample.sample_code}
+              </span>
+              <h2 style={{ fontSize: '32px', margin: '8px 0', fontWeight: 500 }}>{selectedPreviewSample.name}</h2>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <span className={`badge ${getStatusBadgeClass(selectedPreviewSample.status)}`}>
+                  {selectedPreviewSample.status}
+                </span>
+                <span style={{ color: '#666', fontSize: '14px' }}>
+                  {selectedPreviewSample.product_type} · {selectedPreviewSample.sample_round}
+                </span>
               </div>
             </div>
-            <div className="category-card-wrapper">
-              <div
-                className="category-card"
-                onClick={() => handleCategorySelect('Eyewear Collection')}
-              >
-                <div className="category-icon">🕶️</div>
-                <h3>Eyewear Collection</h3>
-                <p>Eyewear Collection</p>
-              </div>
-              {/* 3 Eyewear photos */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
-                gap: 0,
-                marginTop: 0,
+
+            {/* Photos Strip (Max 4) */}
+            {previewPhotos.length > 0 && (
+              <div style={{ 
+                display: 'flex', 
+                gap: 16, 
+                overflowX: 'auto', 
+                paddingBottom: 24, 
+                marginBottom: 40,
+                borderBottom: '1px solid #eee'
               }}>
-                <div style={{
-                  height: 200,
-                  backgroundImage: 'url(/VR_Limited-Edition-No6_33135311_Model-scaled.jpg)',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                }} />
-                <div style={{
-                  height: 200,
-                  backgroundImage: 'url(/vr1.png)',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                }} />
-                <div style={{
-                  height: 200,
-                  backgroundImage: 'url(/vr2.png)',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                }} />
+                {previewPhotos.slice(0, 4).map(photo => (
+                  <img 
+                    key={photo.id}
+                    src={photo.file_path && photo.file_path.startsWith('http') ? photo.file_path : photo.file_path}
+                    alt="Preview"
+                    style={{ height: '280px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
+                  />
+                ))}
               </div>
-            </div>
-            <div className="category-card-wrapper">
-              <div
-                className="category-card"
-                onClick={() => handleCategorySelect('Mariage')}
-              >
-                <div className="category-icon">💍</div>
-                <h3>Mariage</h3>
-                <p>Bridal Collection</p>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48 }}>
+              <div>
+                <h3 style={{ fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px', color: '#999', marginBottom: 24 }}>
+                  Checklist Results
+                </h3>
+                
+                <div style={{ marginBottom: 32 }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, marginBottom: 8 }}>FIT ISSUES</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {(() => {
+                      try {
+                        if (!selectedPreviewSample.internal_notes) return <div style={{ fontSize: '14px', color: '#999' }}>No rejections</div>;
+                        const parsed = JSON.parse(selectedPreviewSample.internal_notes);
+                        if (parsed && parsed._isJsonBlob) {
+                          const rejected = Object.entries(parsed.fitChecks || {})
+                            .filter(([_, v]) => v === 'reject')
+                            .map(([k, _]) => k);
+                          return rejected.length > 0 
+                            ? rejected.map(item => <div key={item} style={{ fontSize: '14px', color: '#e53935' }}>• {item}</div>)
+                            : <div style={{ fontSize: '14px', color: '#999' }}>No rejections</div>;
+                        }
+                      } catch (e) {}
+                      return <div style={{ fontSize: '14px', color: '#999' }}>—</div>;
+                    })()}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, marginBottom: 8 }}>WORKMANSHIP ISSUES</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {(() => {
+                      try {
+                        if (!selectedPreviewSample.internal_notes) return <div style={{ fontSize: '14px', color: '#999' }}>No rejections</div>;
+                        const parsed = JSON.parse(selectedPreviewSample.internal_notes);
+                        if (parsed && parsed._isJsonBlob) {
+                          const rejected = Object.entries(parsed.workChecks || {})
+                            .filter(([_, v]) => v === 'reject')
+                            .map(([k, _]) => k);
+                          return rejected.length > 0 
+                            ? rejected.map(item => <div key={item} style={{ fontSize: '14px', color: '#e53935' }}>• {item}</div>)
+                            : <div style={{ fontSize: '14px', color: '#999' }}>No rejections</div>;
+                        }
+                      } catch (e) {}
+                      return <div style={{ fontSize: '14px', color: '#999' }}>—</div>;
+                    })()}
+                  </div>
+                </div>
               </div>
-              {/* 3 Fashion photos onder Mariage */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
-                gap: 0,
-                marginTop: 0,
-              }}>
-                <div style={{
-                  height: 200,
-                  backgroundImage: 'url(/VRM342-F.jpg.webp)',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center top',
-                }} />
-                <div style={{
-                  height: 200,
-                  backgroundImage: 'url(/VRM368-F.jpg.webp)',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center top',
-                }} />
-                <div style={{
-                  height: 200,
-                  backgroundImage: 'url(/VRM450_B.jpg.webp)',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center top',
-                }} />
+
+              <div>
+                <h3 style={{ fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px', color: '#999', marginBottom: 24 }}>
+                  Latest Comments
+                </h3>
+                <div style={{ 
+                  padding: '24px', 
+                  background: '#f9f9f9', 
+                  borderRadius: '4px',
+                  fontStyle: 'italic',
+                  fontSize: '15px',
+                  lineHeight: '1.6',
+                  color: '#444'
+                }}>
+                  {selectedPreviewSample.latest_comment || 'No specific comments recorded for this article.'}
+                </div>
+                
+                <div style={{ marginTop: 32 }}>
+                  <button 
+                    className="btn btn-primary" 
+                    style={{ width: '100%' }}
+                    onClick={() => navigate(`/samples/${selectedPreviewSample.id}`)}
+                  >
+                    Go to Full Article Detail
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Category Selection */}
+      {!selectedCategory && !selectedManufacturer && !params.collectionId && !searchQuery && (
+        <>
+          <div className="category-selection">
+            <h2 className="section-title">Select Category</h2>
+            <div className="category-grid">
+              <div className="category-card-wrapper">
+                <div
+                  className="category-card"
+                  onClick={() => handleCategorySelect('Ready to Wear')}
+                >
+                  <div className="category-icon">👔</div>
+                  <h3>Ready to Wear</h3>
+                  <p>RTW Collection</p>
+                </div>
+                {/* 3 Fashion photos onder Ready to Wear */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1fr',
+                  gap: 0,
+                  marginTop: 0,
+                }}>
+                  <div style={{
+                    height: 200,
+                    backgroundImage: 'url(/model_front_AW_GREEN_DRESS_195481.jpg.webp)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center top',
+                  }} />
+                  <div style={{
+                    height: 200,
+                    backgroundImage: 'url(/model_front_WT0140039425_4998RTW_FW25MAINDENIM_model.jpg.webp)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center top',
+                  }} />
+                  <div style={{
+                    height: 200,
+                    backgroundImage: 'url(/model_front_WO0060099425_3759RTW_FW25MAINDENIM_model.jpg.webp)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center top',
+                  }} />
+                </div>
+              </div>
+              <div className="category-card-wrapper">
+                <div
+                  className="category-card"
+                  onClick={() => handleCategorySelect('Eyewear Collection')}
+                >
+                  <div className="category-icon">🕶️</div>
+                  <h3>Eyewear Collection</h3>
+                  <p>Eyewear Collection</p>
+                </div>
+                {/* 3 Eyewear photos */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1fr',
+                  gap: 0,
+                  marginTop: 0,
+                }}>
+                  <div style={{
+                    height: 200,
+                    backgroundImage: 'url(/VR_Limited-Edition-No6_33135311_Model-scaled.jpg)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }} />
+                  <div style={{
+                    height: 200,
+                    backgroundImage: 'url(/vr1.png)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }} />
+                  <div style={{
+                    height: 200,
+                    backgroundImage: 'url(/vr2.png)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }} />
+                </div>
+              </div>
+              <div className="category-card-wrapper">
+                <div
+                  className="category-card"
+                  onClick={() => handleCategorySelect('Mariage')}
+                >
+                  <div className="category-icon">💍</div>
+                  <h3>Mariage</h3>
+                  <p>Bridal Collection</p>
+                </div>
+                {/* 3 Fashion photos onder Mariage */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1fr',
+                  gap: 0,
+                  marginTop: 0,
+                }}>
+                  <div style={{
+                    height: 200,
+                    backgroundImage: 'url(/VRM342-F.jpg.webp)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center top',
+                  }} />
+                  <div style={{
+                    height: 200,
+                    backgroundImage: 'url(/VRM368-F.jpg.webp)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center top',
+                  }} />
+                  <div style={{
+                    height: 200,
+                    backgroundImage: 'url(/VRM450_B.jpg.webp)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center top',
+                  }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Browse by Manufacturer Section */}
+          <div style={{ marginTop: 80, borderTop: '1px solid #eee', paddingTop: 64, paddingBottom: 64 }}>
+            <h2 className="section-title" style={{ marginBottom: 32 }}>
+              Browse by Manufacturer
+            </h2>
+            
+            <div className="manufacturers-grid" style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
+              gap: 16 
+            }}>
+              {manufacturers.length > 0 ? (
+                manufacturers.map(name => (
+                  <div
+                    key={name}
+                    className="manufacturer-browse-card"
+                    onClick={() => navigate(`/quality-control/manufacturer/${name}`)}
+                    style={{
+                      padding: '24px',
+                      background: '#fff',
+                      border: '1px solid #eee',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      textAlign: 'center'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#000';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#eee';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <span style={{ fontWeight: 500, fontSize: '15px' }}>{name}</span>
+                  </div>
+                ))
+              ) : (
+                <div style={{ color: '#999', fontStyle: 'italic' }}>No manufacturers found.</div>
+              )}
+            </div>
+          </div>
+        </>
       )}
 
       {/* Year Selection */}
@@ -1028,7 +1523,7 @@ function QualityControl() {
                             style={{ cursor: 'pointer', width: 18, height: 18 }}
                           />
                         </div>
-                        <Link to={`/samples/${sample.id}`} style={{ display: 'contents', color: 'inherit', textDecoration: 'none' }}>
+                        <Link to={`/samples/${sample.id}?fromCategory=${selectedCategory}&fromYear=${selectedYear}&fromSeason=${selectedSeason}`} style={{ display: 'contents', color: 'inherit', textDecoration: 'none' }}>
                           <div className="sample-col-number" style={{ fontSize: '14px', fontWeight: 500 }}>{sample.sample_code}</div>
                           <div className="sample-col-name" style={{ fontSize: '14px', fontWeight: 500 }}>{sample.name}</div>
                           <div className="sample-col-manufacturer" style={{ fontSize: '14px', fontWeight: 500 }}>{sample.supplier_name || '—'}</div>

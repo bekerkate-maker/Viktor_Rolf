@@ -30,6 +30,8 @@ function App() {
         <Route path="/quality-control/:category" element={<Layout><QualityControl /></Layout>} />
         <Route path="/quality-control/:category/:year" element={<Layout><QualityControl /></Layout>} />
         <Route path="/quality-control/:category/:year/:season" element={<Layout><QualityControl /></Layout>} />
+        <Route path="/quality-control/manufacturer/:manufacturer" element={<Layout><QualityControl /></Layout>} />
+        <Route path="/quality-control/manufacturer/:manufacturer/collection/:collectionId" element={<Layout><QualityControl /></Layout>} />
         <Route path="/quality-reviews/:id" element={<Layout><QualityReviewDetail /></Layout>} />
 
       </Routes>

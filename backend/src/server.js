@@ -19,6 +19,7 @@ import qualityReviewsRouter from './routes/qualityReviews.js';
 
 import usersRouter from './routes/users.js';
 import photosRouter from './routes/photos.js';
+import manufacturersRouter from './routes/manufacturers.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -39,6 +40,7 @@ app.use('/api/quality-reviews', qualityReviewsRouter);
 
 app.use('/api/users', usersRouter);
 app.use('/api/photos', photosRouter);
+app.use('/api/manufacturers', manufacturersRouter);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -54,8 +56,13 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Viktor & Rolf QC System API running on port ${PORT}`);
-  console.log(`📍 http://localhost:${PORT}`);
-});
+// Only start the server if we are running the file directly (local dev)
+if (process.env.NODE_ENV !== 'production' && import.meta.url === `file://${fileURLToPath(import.meta.url)}`) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Viktor & Rolf QC System API running on port ${PORT}`);
+    console.log(`📍 http://localhost:${PORT}`);
+  });
+}
+
+// Export the app for serverless deployment
+export default app;

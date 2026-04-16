@@ -15,7 +15,11 @@ router.get('/', async (req, res) => {
       .select('*')
       .order('name', { ascending: true });
 
-    const tableMissing = error && (error.code === '42P01' || error.message?.includes('does not exist'));
+    const tableMissing = error && (
+      error.code === '42P01' || 
+      error.message?.includes('does not exist') || 
+      error.message?.includes('schema cache')
+    );
     if (error && !tableMissing) throw error;
     
     manufacturers = manufacturers || [];

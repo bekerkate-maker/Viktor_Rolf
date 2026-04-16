@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import InternalNotesSection from '../components/InternalNotesSection';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { samplesAPI, photosAPI, manufacturersAPI } from '../api';
 import type { Sample, SamplePhoto } from '../types';
 import { getStatusBadge } from '../components/SampleHeader';
@@ -13,6 +13,13 @@ const STATUS_OPTIONS = ['In Review', 'Changes Needed', 'Approved', 'Rejected'] a
 function SampleDetail() {
   const params = useParams<{ id: string; collectionId?: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const fromManufacturer = queryParams.get('fromManufacturer');
+  const fromCollection = queryParams.get('fromCollection');
+  const fromCategory = queryParams.get('fromCategory');
+  const fromYear = queryParams.get('fromYear');
+  const fromSeason = queryParams.get('fromSeason');
   const id = params.id;
   const [sample, setSample] = useState<Sample | null>(null);
   const [photos, setPhotos] = useState<SamplePhoto[]>([]);
@@ -744,8 +751,14 @@ function SampleDetail() {
         <div style={{ flex: 1 }}>
           <div
             onClick={() => {
-              if (sample.collection_type && sample.year && sample.season) {
-                // Ensure the category slug matches the CATEGORY_MAP in QualityControl
+              if (fromManufacturer && fromCollection) {
+                navigate(`/quality-control/manufacturer/${fromManufacturer}/collection/${fromCollection}`);
+              } else if (fromCategory && fromYear && fromSeason) {
+                const categorySlug = fromCategory.toLowerCase().replace(/ /g, '-');
+                const seasonSlug = fromSeason.toLowerCase() === 'spring/summer' ? 'ss' : 'fw';
+                navigate(`/quality-control/${categorySlug}/${fromYear}/${seasonSlug}`);
+              } else if (sample.collection_type && sample.year && sample.season) {
+                // Fallback for direct links
                 let categorySlug = sample.collection_type.toLowerCase();
                 if (categorySlug === 'rtw' || categorySlug.includes('ready to wear')) {
                   categorySlug = 'ready-to-wear';

@@ -17,8 +17,8 @@ router.get('/', async (req, res) => {
         *,
         collection:collections(name, season, year, category),
         responsible_user:users!responsible_user_id(first_name, last_name, email),
-        quality_reviews(id),
-        supplier_communications(id)
+        quality_reviews(*, reviewer:users!reviewer_id(first_name, last_name)),
+        supplier_communications(*)
       `);
 
     if (collection_id) {
@@ -36,19 +36,26 @@ router.get('/', async (req, res) => {
 
     if (error) throw error;
 
-    // Transform data to match old structure
-    const transformedSamples = samples.map(s => ({
-      ...s,
-      collection_name: s.collection?.name,
-      season: s.collection?.season,
-      year: s.collection?.year,
-      collection_type: s.collection?.category,
-      responsible_user_name: s.responsible_user
-        ? `${s.responsible_user.first_name} ${s.responsible_user.last_name}`
-        : null,
-      quality_review_count: s.quality_reviews?.length || 0,
-      supplier_comm_count: s.supplier_communications?.length || 0
-    }));
+    // Transform data to match structure
+    const transformedSamples = samples.map(s => {
+      const reviews = s.quality_reviews || [];
+      const latestReview = reviews.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+      
+      return {
+        ...s,
+        collection_name: s.collection?.name,
+        season: s.collection?.season,
+        year: s.collection?.year,
+        collection_type: s.collection?.category,
+        responsible_user_name: s.responsible_user
+          ? `${s.responsible_user.first_name} ${s.responsible_user.last_name}`
+          : null,
+        quality_review_count: reviews.length,
+        supplier_comm_count: s.supplier_communications?.length || 0,
+        latest_comment: latestReview?.comments || null,
+        latest_status: latestReview?.status || s.status
+      };
+    });
 
     res.json(transformedSamples);
   } catch (error) {

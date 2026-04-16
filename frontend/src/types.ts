@@ -47,7 +47,10 @@ export interface Sample {
   responsible_user_name?: string;
   responsible_user_email?: string;
   quality_review_count?: number;
-
+  supplier_comm_count?: number;
+  latest_comment?: string | null;
+  latest_status?: string;
+  
   quality_reviews?: QualityReview[];
 
   audit_trail?: AuditTrailEntry[];
