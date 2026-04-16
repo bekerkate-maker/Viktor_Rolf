@@ -6,8 +6,8 @@ import { dirname } from 'path';
 import { supabase } from '../database/supabase.js';
 import { verifyToken } from '../middleware/auth.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __filename = import.meta.url ? fileURLToPath(import.meta.url) : '';
+const __dirname = __filename ? dirname(__filename) : process.cwd();
 
 const router = express.Router();
 

@@ -42,7 +42,7 @@ router.post('/register', async (req, res) => {
         first_name,
         last_name,
         email,
-        password: hashedPassword,
+        password_hash: hashedPassword,
         job_title,
         role: 'editor'
       })
@@ -101,12 +101,8 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    if (!user.password) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
     // Check password
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, user.password_hash || user.password);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }

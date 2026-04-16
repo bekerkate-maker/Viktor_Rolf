@@ -7,9 +7,9 @@ import { fileURLToPath } from 'url';
 // Load environment variables IMMEDIATELY so they are available in routes
 dotenv.config();
 
-// Setup __dirname for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Setup __dirname for ES modules with safety for bundled environments
+const __filename = import.meta.url ? fileURLToPath(import.meta.url) : '';
+const __dirname = __filename ? path.dirname(__filename) : process.cwd();
 
 // Import routes
 import authRouter from './routes/auth.js';
@@ -56,8 +56,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Only start the server if we are running the file directly (local dev)
-if (process.env.NODE_ENV !== 'production' && import.meta.url === `file://${fileURLToPath(import.meta.url)}`) {
+// Only start the server if we are running in local development mode
+if (process.env.NODE_ENV !== 'production' && !process.env.NETLIFY) {
   app.listen(PORT, () => {
     console.log(`🚀 Viktor & Rolf QC System API running on port ${PORT}`);
     console.log(`📍 http://localhost:${PORT}`);

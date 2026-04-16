@@ -5,47 +5,25 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { supabase } from '../database/supabase.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __filename = import.meta.url ? fileURLToPath(import.meta.url) : '';
+const __dirname = __filename ? path.dirname(__filename) : process.cwd();
 
 const router = express.Router();
 
-// Configure multer for file uploads
+// Configure multer for file uploads (fallback to local, but should use Supabase Storage in production)
 const uploadDir = path.join(__dirname, '../../../uploads/supplier-comms');
-
-// Ensure upload directory exists
-if (!fs.existsSync(uploadDir)) {
+if (!fs.existsSync(uploadDir) && process.env.NODE_ENV !== 'production') {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'sc-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
+const storage = multer.memoryStorage(); // Use memory storage for serverless compatibility
 const upload = multer({ 
   storage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB limit
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|xls|xlsx/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    
-    if (extname) {
-      return cb(null, true);
-    } else {
-      cb(new Error('Only images, PDFs and documents are allowed'));
-    }
-  }
+  limits: { fileSize: 20 * 1024 * 1024 },
 });
 
 /**
  * GET /api/supplier-communications
- * Get all supplier communications with optional filters
  */
 router.get('/', async (req, res) => {
   try {
@@ -59,24 +37,15 @@ router.get('/', async (req, res) => {
         created_by_user:users!created_by(first_name, last_name)
       `);
 
-    if (sample_id) {
-      query = query.eq('sample_id', sample_id);
-    }
-    
-    if (status) {
-      query = query.eq('status', status);
-    }
-
-    if (supplier_name) {
-      query = query.ilike('supplier_name', `%${supplier_name}%`);
-    }
+    if (sample_id) query = query.eq('sample_id', sample_id);
+    if (status) query = query.eq('status', status);
+    if (supplier_name) query = query.ilike('supplier_name', `%${supplier_name}%`);
 
     query = query.order('communication_date', { ascending: false });
 
     const { data: communications, error } = await query;
     if (error) throw error;
 
-    // Transform data
     const transformedComms = communications.map(sc => ({
       ...sc,
       sample_code: sc.sample?.sample_code,
@@ -89,36 +58,39 @@ router.get('/', async (req, res) => {
 
     res.json(transformedComms);
   } catch (error) {
-    console.error('Error loading supplier communications:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 /**
  * GET /api/supplier-communications/overdue
- * Get communications with overdue deadlines
  */
-router.get('/overdue', (req, res) => {
+router.get('/overdue', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
     
-    const overdue = db.prepare(`
-      SELECT 
-        sc.*,
-        s.sample_code,
-        s.name as sample_name,
-        c.name as collection_name,
-        (u.first_name || ' ' || u.last_name) as created_by_name
-      FROM supplier_communications sc
-      LEFT JOIN samples s ON sc.sample_id = s.id
-      LEFT JOIN collections c ON s.collection_id = c.id
-      LEFT JOIN users u ON sc.created_by = u.id
-      WHERE sc.status != 'Completed'
-        AND (sc.sample_due_date < ? OR sc.feedback_due_date < ?)
-      ORDER BY sc.sample_due_date ASC
-    `).all(today, today);
+    const { data: overdue, error } = await supabase
+      .from('supplier_communications')
+      .select(`
+        *,
+        sample:samples(sample_code, name, collection:collections(name)),
+        created_by_user:users!created_by(first_name, last_name)
+      `)
+      .neq('status', 'Completed')
+      .or(`sample_due_date.lt.${today},feedback_due_date.lt.${today}`)
+      .order('sample_due_date', { ascending: true });
 
-    res.json(overdue);
+    if (error) throw error;
+
+    const transformed = overdue.map(sc => ({
+      ...sc,
+      sample_code: sc.sample?.sample_code,
+      sample_name: sc.sample?.name,
+      collection_name: sc.sample?.collection?.name,
+      created_by_name: sc.created_by_user ? `${sc.created_by_user.first_name} ${sc.created_by_user.last_name}` : null
+    }));
+
+    res.json(transformed);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -126,26 +98,31 @@ router.get('/overdue', (req, res) => {
 
 /**
  * GET /api/supplier-communications/important
- * Get important communications
  */
-router.get('/important', (req, res) => {
+router.get('/important', async (req, res) => {
   try {
-    const important = db.prepare(`
-      SELECT 
-        sc.*,
-        s.sample_code,
-        s.name as sample_name,
-        c.name as collection_name,
-        (u.first_name || ' ' || u.last_name) as created_by_name
-      FROM supplier_communications sc
-      LEFT JOIN samples s ON sc.sample_id = s.id
-      LEFT JOIN collections c ON s.collection_id = c.id
-      LEFT JOIN users u ON sc.created_by = u.id
-      WHERE sc.is_important = 1 AND sc.status != 'Completed'
-      ORDER BY sc.communication_date DESC
-    `).all();
+    const { data: important, error } = await supabase
+      .from('supplier_communications')
+      .select(`
+        *,
+        sample:samples(sample_code, name, collection:collections(name)),
+        created_by_user:users!created_by(first_name, last_name)
+      `)
+      .eq('is_important', true)
+      .neq('status', 'Completed')
+      .order('communication_date', { ascending: false });
 
-    res.json(important);
+    if (error) throw error;
+
+    const transformed = important.map(sc => ({
+      ...sc,
+      sample_code: sc.sample?.sample_code,
+      sample_name: sc.sample?.name,
+      collection_name: sc.sample?.collection?.name,
+      created_by_name: sc.created_by_user ? `${sc.created_by_user.first_name} ${sc.created_by_user.last_name}` : null
+    }));
+
+    res.json(transformed);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -153,38 +130,30 @@ router.get('/important', (req, res) => {
 
 /**
  * GET /api/supplier-communications/:id
- * Get single supplier communication with attachments
  */
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const communication = db.prepare(`
-      SELECT 
-        sc.*,
-        s.sample_code,
-        s.name as sample_name,
-        c.name as collection_name,
-        (u.first_name || ' ' || u.last_name) as created_by_name,
-        u.email as created_by_email
-      FROM supplier_communications sc
-      LEFT JOIN samples s ON sc.sample_id = s.id
-      LEFT JOIN collections c ON s.collection_id = c.id
-      LEFT JOIN users u ON sc.created_by = u.id
-      WHERE sc.id = ?
-    `).get(req.params.id);
+    const { data: communication, error } = await supabase
+      .from('supplier_communications')
+      .select(`
+        *,
+        sample:samples(sample_code, name, collection:collections(name)),
+        created_by_user:users!created_by(first_name, last_name, email),
+        attachments:supplier_comm_attachments(*)
+      `)
+      .eq('id', req.params.id)
+      .single();
 
-    if (!communication) {
-      return res.status(404).json({ error: 'Supplier communication not found' });
-    }
+    if (error) throw error;
 
-    // Get attachments
-    const attachments = db.prepare(`
-      SELECT * FROM supplier_comm_attachments WHERE supplier_comm_id = ?
-      ORDER BY uploaded_at DESC
-    `).all(req.params.id);
-
-    communication.attachments = attachments;
-
-    res.json(communication);
+    res.json({
+      ...communication,
+      sample_code: communication.sample?.sample_code,
+      sample_name: communication.sample?.name,
+      collection_name: communication.sample?.collection?.name,
+      created_by_name: communication.created_by_user ? `${communication.created_by_user.first_name} ${communication.created_by_user.last_name}` : null,
+      created_by_email: communication.created_by_user?.email
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -192,47 +161,37 @@ router.get('/:id', (req, res) => {
 
 /**
  * POST /api/supplier-communications
- * Create new supplier communication
  */
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { 
-      sample_id, 
-      supplier_name, 
-      communication_date, 
-      communication_type, 
-      summary, 
-      sample_due_date, 
-      feedback_due_date, 
-      status, 
-      is_important,
-      created_by 
+      sample_id, supplier_name, communication_date, communication_type, 
+      summary, sample_due_date, feedback_due_date, status, is_important, created_by 
     } = req.body;
 
-    const result = db.prepare(`
-      INSERT INTO supplier_communications 
-      (sample_id, supplier_name, communication_date, communication_type, summary, sample_due_date, feedback_due_date, status, is_important, created_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      sample_id, 
-      supplier_name, 
-      communication_date, 
-      communication_type, 
-      summary, 
-      sample_due_date, 
-      feedback_due_date, 
-      status || 'Waiting for Supplier', 
-      is_important || 0,
-      created_by
-    );
+    const { data: communication, error } = await supabase
+      .from('supplier_communications')
+      .insert({
+        sample_id, supplier_name, communication_date, communication_type, 
+        summary, sample_due_date, feedback_due_date, 
+        status: status || 'Waiting for Supplier', 
+        is_important: is_important || false,
+        created_by
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
 
     // Log audit trail
-    db.prepare(`
-      INSERT INTO audit_trail (entity_type, entity_id, action, user_id, changes)
-      VALUES ('supplier_communication', ?, 'created', ?, ?)
-    `).run(result.lastInsertRowid, created_by, `Communication logged with ${supplier_name}`);
+    await supabase.from('audit_trail').insert({
+      entity_type: 'supplier_communication',
+      entity_id: communication.id,
+      action: 'created',
+      user_id: created_by,
+      changes: `Communication logged with ${supplier_name}`
+    });
 
-    const communication = db.prepare('SELECT * FROM supplier_communications WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json(communication);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -241,50 +200,44 @@ router.post('/', (req, res) => {
 
 /**
  * PUT /api/supplier-communications/:id
- * Update supplier communication
  */
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const { 
-      supplier_name, 
-      communication_date, 
-      communication_type, 
-      summary, 
-      sample_due_date, 
-      feedback_due_date, 
-      status, 
-      is_important,
-      user_id
+      supplier_name, communication_date, communication_type, summary, 
+      sample_due_date, feedback_due_date, status, is_important, user_id
     } = req.body;
 
-    const oldComm = db.prepare('SELECT * FROM supplier_communications WHERE id = ?').get(req.params.id);
+    const { data: oldComm, error: fetchError } = await supabase
+      .from('supplier_communications')
+      .select('status')
+      .eq('id', req.params.id)
+      .single();
 
-    db.prepare(`
-      UPDATE supplier_communications 
-      SET supplier_name = ?, communication_date = ?, communication_type = ?, summary = ?, 
-          sample_due_date = ?, feedback_due_date = ?, status = ?, is_important = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(
-      supplier_name, 
-      communication_date, 
-      communication_type, 
-      summary, 
-      sample_due_date, 
-      feedback_due_date, 
-      status, 
-      is_important,
-      req.params.id
-    );
+    if (fetchError) throw fetchError;
 
-    // Log status change
+    const { data: communication, error } = await supabase
+      .from('supplier_communications')
+      .update({
+        supplier_name, communication_date, communication_type, summary, 
+        sample_due_date, feedback_due_date, status, is_important, updated_at: new Date()
+      })
+      .eq('id', req.params.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
     if (oldComm.status !== status && user_id) {
-      db.prepare(`
-        INSERT INTO audit_trail (entity_type, entity_id, action, user_id, changes)
-        VALUES ('supplier_communication', ?, 'status_changed', ?, ?)
-      `).run(req.params.id, user_id, `Status changed from "${oldComm.status}" to "${status}"`);
+      await supabase.from('audit_trail').insert({
+        entity_type: 'supplier_communication',
+        entity_id: req.params.id,
+        action: 'status_changed',
+        user_id: user_id,
+        changes: `Status changed from "${oldComm.status}" to "${status}"`
+      });
     }
 
-    const communication = db.prepare('SELECT * FROM supplier_communications WHERE id = ?').get(req.params.id);
     res.json(communication);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -293,20 +246,15 @@ router.put('/:id', (req, res) => {
 
 /**
  * DELETE /api/supplier-communications/:id
- * Delete supplier communication
  */
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    // Delete associated attachments from filesystem
-    const attachments = db.prepare('SELECT file_path FROM supplier_comm_attachments WHERE supplier_comm_id = ?').all(req.params.id);
-    attachments.forEach(att => {
-      const fullPath = path.join(__dirname, '../../../', att.file_path);
-      if (fs.existsSync(fullPath)) {
-        fs.unlinkSync(fullPath);
-      }
-    });
+    const { error } = await supabase
+      .from('supplier_communications')
+      .delete()
+      .eq('id', req.params.id);
 
-    db.prepare('DELETE FROM supplier_communications WHERE id = ?').run(req.params.id);
+    if (error) throw error;
     res.json({ message: 'Supplier communication deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -314,76 +262,27 @@ router.delete('/:id', (req, res) => {
 });
 
 /**
- * POST /api/supplier-communications/:id/attachments
- * Upload attachments for supplier communication
- */
-router.post('/:id/attachments', upload.array('attachments', 10), (req, res) => {
-  try {
-    const commId = req.params.id;
-    const uploadedAttachments = [];
-
-    req.files.forEach(file => {
-      const relativePath = `uploads/supplier-comms/${file.filename}`;
-      
-      const result = db.prepare(`
-        INSERT INTO supplier_comm_attachments (supplier_comm_id, file_path, file_name, file_type)
-        VALUES (?, ?, ?, ?)
-      `).run(commId, relativePath, file.originalname, file.mimetype);
-
-      uploadedAttachments.push({
-        id: result.lastInsertRowid,
-        file_path: relativePath,
-        file_name: file.originalname,
-        file_type: file.mimetype
-      });
-    });
-
-    res.status(201).json(uploadedAttachments);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * DELETE /api/supplier-communications/:commId/attachments/:attachmentId
- * Delete an attachment
- */
-router.delete('/:commId/attachments/:attachmentId', (req, res) => {
-  try {
-    const attachment = db.prepare('SELECT file_path FROM supplier_comm_attachments WHERE id = ?').get(req.params.attachmentId);
-    
-    if (attachment) {
-      const fullPath = path.join(__dirname, '../../../', attachment.file_path);
-      if (fs.existsSync(fullPath)) {
-        fs.unlinkSync(fullPath);
-      }
-    }
-
-    db.prepare('DELETE FROM supplier_comm_attachments WHERE id = ?').run(req.params.attachmentId);
-    res.json({ message: 'Attachment deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
  * GET /api/supplier-communications/stats/overview
- * Get overview statistics
  */
-router.get('/stats/overview', (req, res) => {
+router.get('/stats/overview', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
     
-    const stats = {
-      total_communications: db.prepare('SELECT COUNT(*) as count FROM supplier_communications').get().count,
-      waiting_for_supplier: db.prepare('SELECT COUNT(*) as count FROM supplier_communications WHERE status = "Waiting for Supplier"').get().count,
-      waiting_for_internal: db.prepare('SELECT COUNT(*) as count FROM supplier_communications WHERE status = "Waiting for Internal Feedback"').get().count,
-      completed: db.prepare('SELECT COUNT(*) as count FROM supplier_communications WHERE status = "Completed"').get().count,
-      overdue_samples: db.prepare('SELECT COUNT(*) as count FROM supplier_communications WHERE sample_due_date < ? AND status != "Completed"').get(today).count,
-      important_open: db.prepare('SELECT COUNT(*) as count FROM supplier_communications WHERE is_important = 1 AND status != "Completed"').get().count
-    };
+    const { count: total } = await supabase.from('supplier_communications').select('*', { count: 'exact', head: true });
+    const { count: waitingSupplier } = await supabase.from('supplier_communications').select('*', { count: 'exact', head: true }).eq('status', 'Waiting for Supplier');
+    const { count: waitingInternal } = await supabase.from('supplier_communications').select('*', { count: 'exact', head: true }).eq('status', 'Waiting for Internal Feedback');
+    const { count: completed } = await supabase.from('supplier_communications').select('*', { count: 'exact', head: true }).eq('status', 'Completed');
+    const { count: overdue } = await supabase.from('supplier_communications').select('*', { count: 'exact', head: true }).lt('sample_due_date', today).neq('status', 'Completed');
+    const { count: important } = await supabase.from('supplier_communications').select('*', { count: 'exact', head: true }).eq('is_important', true).neq('status', 'Completed');
 
-    res.json(stats);
+    res.json({
+      total_communications: total || 0,
+      waiting_for_supplier: waitingSupplier || 0,
+      waiting_for_internal: waitingInternal || 0,
+      completed: completed || 0,
+      overdue_samples: overdue || 0,
+      important_open: important || 0
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
