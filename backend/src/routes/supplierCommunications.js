@@ -12,8 +12,15 @@ const router = express.Router();
 
 // Configure multer for file uploads (fallback to local, but should use Supabase Storage in production)
 const uploadDir = path.join(__dirname, '../../../uploads/supplier-comms');
-if (!fs.existsSync(uploadDir) && process.env.NODE_ENV !== 'production') {
-  fs.mkdirSync(uploadDir, { recursive: true });
+// Ensure upload directory exists (Only in local development)
+try {
+  if (process.env.NODE_ENV !== 'production' && !process.env.NETLIFY && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+  }
+} catch (err) {
+  console.warn('Skipping directory creation in serverless environment:', err.message);
 }
 
 const storage = multer.memoryStorage(); // Use memory storage for serverless compatibility

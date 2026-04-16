@@ -14,8 +14,14 @@ const router = express.Router();
 const uploadDir = path.join(__dirname, '../../../uploads/quality-reviews');
 
 // Ensure upload directory exists (Only in local development)
-if (process.env.NODE_ENV !== 'production' && !process.env.NETLIFY && !fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+try {
+  if (process.env.NODE_ENV !== 'production' && !process.env.NETLIFY && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+  }
+} catch (err) {
+  console.warn('Skipping directory creation in serverless environment:', err.message);
 }
 
 const storage = multer.memoryStorage();
