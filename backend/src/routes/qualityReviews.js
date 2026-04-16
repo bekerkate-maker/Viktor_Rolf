@@ -13,20 +13,12 @@ const router = express.Router();
 // Configure multer for file uploads
 const uploadDir = path.join(__dirname, '../../../uploads/quality-reviews');
 
-// Ensure upload directory exists
-if (!fs.existsSync(uploadDir)) {
+// Ensure upload directory exists (Only in local development)
+if (process.env.NODE_ENV !== 'production' && !process.env.NETLIFY && !fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'qr-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+const storage = multer.memoryStorage();
 
 const upload = multer({ 
   storage,
