@@ -1640,6 +1640,7 @@ function QualityControl() {
       />
 
       </div>
+      <div style={{ paddingBottom: 120 }}></div>
     </div>
 
       {/* Print View Section - Hidden in browser, shown in media print */}

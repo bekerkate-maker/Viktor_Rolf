@@ -67,11 +67,7 @@ function Layout({ children }: LayoutProps) {
           </Link>
         </div>
         <ul className="nav-menu">
-          <li>
-            <Link to="/quality-control" className={isActive('/quality-control')}>
-              Quality Control
-            </Link>
-          </li>
+
 
           {user && (
             <li className="user-menu-container" ref={menuRef}>
