@@ -1042,10 +1042,18 @@ function SampleDetail() {
           )}
         </div>
 
-        {/* Right side controls: Navigation and Status */}
+        {/* Right side controls: Status */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-          {/* Subtle Navigation Arrows */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff', padding: '6px 12px', borderRadius: 20, border: '1px solid #eee', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+          {/* Subtle Navigation Arrows - Moved to top right */}
+          <div style={{ 
+            position: 'absolute', 
+            top: 38, 
+            right: 48, 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 8, 
+            background: 'transparent'
+          }}>
             <button 
               disabled={!prevSample}
               onClick={() => prevSample && navigate(`/samples/${prevSample.id}${location.search}`)}
