@@ -1123,54 +1123,72 @@ function SampleDetail() {
           <div className="print-top-section" style={{ display: 'grid', gridTemplateColumns: photos.length > 0 ? '1fr 1fr' : '1fr', gap: 24, alignItems: 'stretch' }}>
           {/* Linker kolom: Photos */}
           <div className="luxury-card no-print" style={{ border: '1px solid #eee', borderRadius: 12, background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.03)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: photos.length === 1 ? '1fr' : '1fr 1fr', gap: 2, background: '#f5f5f5', minHeight: 400 }}>
+            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, background: '#f5f5f5', minHeight: 400 }}>
               {photos.length > 0 ? (
-                photos.slice(0, 2).map((photo, index) => {
-                  const isLastWithMore = index === 1 && photos.length > 2;
-                  return (
-                    <div
-                      key={photo.id}
-                      onClick={() => { setLightboxIndex(index); setShowLightbox(true); }}
-                      style={{
-                        position: 'relative',
-                        cursor: 'pointer',
-                        overflow: 'hidden',
-                        height: '100%',
-                      }}
-                    >
-                      <img
-                        src={photo.file_path}
-                        alt={photo.file_name}
+                <>
+                  {photos.slice(0, 2).map((photo, index) => {
+                    const isLastWithMore = index === 1 && photos.length > 2;
+                    return (
+                      <div
+                        key={photo.id}
+                        onClick={() => { setLightboxIndex(index); setShowLightbox(true); }}
                         style={{
-                          width: '100%',
+                          position: 'relative',
+                          cursor: 'pointer',
+                          overflow: 'hidden',
                           height: '100%',
-                          objectFit: 'cover',
-                          transition: 'transform 0.2s',
                         }}
-                      />
-                      {isLastWithMore && (
-                        <div style={{
-                          position: 'absolute',
-                          right: 12, bottom: 12,
-                          padding: '6px 14px',
-                          background: 'rgba(255, 255, 255, 0.85)',
-                          backdropFilter: 'blur(4px)',
-                          WebkitBackdropFilter: 'blur(4px)',
-                          borderRadius: '20px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#222',
-                          fontSize: 13,
-                          fontWeight: 600,
-                          boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
-                        }}>
-                          +{photos.length - 2}
-                        </div>
-                      )}
+                      >
+                        <img
+                          src={photo.file_path}
+                          alt={photo.file_name}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            transition: 'transform 0.2s',
+                          }}
+                        />
+                        {isLastWithMore && (
+                          <div style={{
+                            position: 'absolute',
+                            right: 12, bottom: 12,
+                            padding: '6px 14px',
+                            background: 'rgba(255, 255, 255, 0.85)',
+                            backdropFilter: 'blur(4px)',
+                            WebkitBackdropFilter: 'blur(4px)',
+                            borderRadius: '20px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#222',
+                            fontSize: 13,
+                            fontWeight: 600,
+                            boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
+                          }}>
+                            +{photos.length - 2}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {/* Fill second slot if only 1 photo exists */}
+                  {photos.length === 1 && (
+                    <div style={{ 
+                      background: '#fcfcfc', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      color: '#ddd',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      letterSpacing: '1px',
+                      textTransform: 'uppercase'
+                    }}>
+                      [ Photo Slot 2 ]
                     </div>
-                  );
-                })
+                  )}
+                </>
               ) : (
                 <div className="luxury-empty-state" style={{ textAlign: 'center', color: '#bbb', fontSize: 16, padding: '24px 48px', gridColumn: '1 / -1', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, height: '100%' }}>
                   <Plus size={24} style={{ opacity: 0.5 }} />
