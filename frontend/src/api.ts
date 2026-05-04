@@ -12,9 +12,6 @@ const API_BASE_URL = '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
 // Helper: zorgt dat er altijd een geldige token is
@@ -103,9 +100,7 @@ export const qualityReviewsAPI = {
   uploadPhotos: (id: number, files: File[]) => {
     const formData = new FormData();
     files.forEach((file) => formData.append('photos', file));
-    return api.post(`/quality-reviews/${id}/photos`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    return api.post(`/quality-reviews/${id}/photos`, formData);
   },
   deletePhoto: (reviewId: number, photoId: number) =>
     api.delete(`/quality-reviews/${reviewId}/photos/${photoId}`),
@@ -130,33 +125,18 @@ export const photosAPI = {
   uploadPhotos: async (sampleId: string, files: File[]) => {
     const formData = new FormData();
     files.forEach((file) => formData.append('photos', file));
-    // Zorg dat er een geldige token is
-    const token = await ensureToken();
-    return api.post(`/photos/samples/${sampleId}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
+    // Gebruik de standaard 'api' instance zodat de interceptors hun werk doen
+    return api.post(`/photos/samples/${sampleId}`, formData);
   },
   getPhotos: (sampleId: string) => api.get(`/photos/samples/${sampleId}`),
   setMainPhoto: async (photoId: number) => {
-    const token = await ensureToken();
-    return api.put(`/photos/${photoId}/set-main`, {}, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    });
+    return api.put(`/photos/${photoId}/set-main`, {});
   },
   updateOrder: async (photoId: number, display_order: number) => {
-    const token = await ensureToken();
-    return api.put(`/photos/${photoId}/order`, { display_order }, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    });
+    return api.put(`/photos/${photoId}/order`, { display_order });
   },
   deletePhoto: async (photoId: number) => {
-    const token = await ensureToken();
-    return api.delete(`/photos/${photoId}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    });
+    return api.delete(`/photos/${photoId}`);
   },
 };
 
@@ -186,9 +166,7 @@ export const supplierCommsAPI = {
   uploadAttachments: (id: number, files: File[]) => {
     const formData = new FormData();
     files.forEach((file) => formData.append('attachments', file));
-    return api.post(`/supplier-communications/${id}/attachments`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    return api.post(`/supplier-communications/${id}/attachments`, formData);
   },
   deleteAttachment: (commId: number, attachmentId: number) =>
     api.delete(`/supplier-communications/${commId}/attachments/${attachmentId}`),
