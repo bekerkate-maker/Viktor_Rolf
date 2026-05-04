@@ -1108,7 +1108,6 @@ function SampleDetail() {
           {sample.status && sample.status !== 'None' && getStatusBadge(sample.status)}
         </div>
       </div>
-    </div>
 
       {/* Layout: Top section met fotos (links) en info (rechts) */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: '0 16px 48px 16px' }}>
@@ -1153,7 +1152,7 @@ function SampleDetail() {
           <div className="print-top-section" style={{ display: 'grid', gridTemplateColumns: photos.length > 0 ? '1fr 1fr' : '1fr', gap: 24, alignItems: 'stretch' }}>
           {/* Linker kolom: Photos */}
           <div className="luxury-card no-print" style={{ border: '1px solid #eee', borderRadius: 12, background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.03)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, background: '#f5f5f5', minHeight: 400 }}>
+            <div style={{ height: 650, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, background: '#f5f5f5' }}>
               {photos.length > 0 ? (
                 <>
                   {photos.slice(0, 2).map((photo, index) => {
