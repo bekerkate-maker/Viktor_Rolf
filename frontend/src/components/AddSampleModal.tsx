@@ -365,6 +365,7 @@ function AddSampleModal({ isOpen, onClose, collections, onSampleAdded }: AddSamp
                 className="form-input"
                 required
               >
+                <option value="None">None</option>
                 <option value="In Review">In Review</option>
                 <option value="Changes Needed">Changes Needed</option>
                 <option value="Approved">Approved</option>
