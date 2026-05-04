@@ -39,8 +39,13 @@ function AddSampleModal({ isOpen, onClose, collections, onSampleAdded }: AddSamp
       manufacturersAPI.getAll().then(res => {
         setManufacturersList(res.data.map(m => m.name));
       }).catch(console.error);
+
+      // Auto-select the first collection if none is selected
+      if (collections.length > 0 && !formData.collection_id) {
+        setFormData(prev => ({ ...prev, collection_id: collections[0].id }));
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, collections]);
 
   // Automatic category/year updates disabled to ensure manual input as per user request
 
@@ -141,6 +146,24 @@ function AddSampleModal({ isOpen, onClose, collections, onSampleAdded }: AddSamp
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form">
+          <div className="form-group">
+            <label className="form-label">Production (Collection) *</label>
+            <select
+              name="collection_id"
+              value={formData.collection_id}
+              onChange={handleChange}
+              className="form-input"
+              required
+            >
+              <option value="">Select a production...</option>
+              {collections.map(col => (
+                <option key={col.id} value={col.id}>
+                  {col.name} ({col.category} · {col.season} {col.year})
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div style={{ marginBottom: 24, padding: 16, background: '#fcfcfc', border: '1px solid #eee', borderRadius: 8, width: '100%', boxSizing: 'border-box' }}>
             <label className="form-label" style={{ fontWeight: 700, marginBottom: 12, color: '#111', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>Article Number Components</label>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'end' }}>
