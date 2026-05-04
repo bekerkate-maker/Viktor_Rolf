@@ -11,9 +11,16 @@ const __dirname = __filename ? dirname(__filename) : process.cwd();
 
 const router = express.Router();
 
-// Configure multer for file uploads
-const storage = multer.memoryStorage();
-
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, '../../uploads/samples');
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'sample-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
 const upload = multer({
   storage: storage,
   limits: {
@@ -128,13 +135,13 @@ router.put('/:photoId/set-main', verifyToken, async (req, res) => {
     // Reset all photos for this sample to not be main
     await supabase
       .from('sample_photos')
-      .update({ is_main_photo: false })
+      .update({ is_main_photo: 0 })
       .eq('sample_id', photo.sample_id);
 
     // Set this photo as main
     await supabase
       .from('sample_photos')
-      .update({ is_main_photo: true })
+      .update({ is_main_photo: 1 })
       .eq('id', photoId);
 
     res.json({ message: 'Main photo updated successfully' });

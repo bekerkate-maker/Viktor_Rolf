@@ -5,7 +5,7 @@ import type { Collection, Sample } from '../types';
 import AddSampleModal from '../components/AddSampleModal';
 import EditSampleModal from '../components/EditSampleModal';
 import ManufacturersModal from '../components/ManufacturersModal';
-import { Plus } from 'lucide-react';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
 
 type Category = 'Mariage' | 'Eyewear Collection' | 'Ready to Wear';
 
@@ -97,6 +97,14 @@ function QualityControl() {
   const [printSamples, setPrintSamples] = useState<Sample[]>([]);
   const [showManufacturersModal, setShowManufacturersModal] = useState(false);
   const [manufacturers, setManufacturers] = useState<string[]>([]);
+  const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
+
+  // Add click outside handler to close menu
+  useEffect(() => {
+    const handleClickOutside = () => setActiveMenuId(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   // Initialize and Sync State from URL params
   useEffect(() => {
@@ -1425,7 +1433,7 @@ function QualityControl() {
 
       {/* Samples Grid */}
       {selectedCategory && selectedYear && selectedSeason && !loading && collections.length > 0 && (
-        <div className="samples-view" style={{ padding: '0 40px' }}>
+        <div className="samples-view" style={{ padding: 0 }}>
           <div className="samples-header-with-add" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', minHeight: '60px', marginTop: '20px' }}>
             <div>
               <h2 className="section-title" style={{ fontSize: '24px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>
@@ -1496,24 +1504,24 @@ function QualityControl() {
             </button>
           </div>
           {samples.length > 0 ? (
-            <div className="samples-table">
-              <div className="samples-table-header">
-                <div className="samples-table-header-inner" style={{ gridTemplateColumns: '48px 140px 1.5fr 1fr 100px 120px' }}>
-                  <div className="sample-col-check" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <input
-                      type="checkbox"
-                      checked={samples.filter(s => manufacturerFilter === 'All' || s.supplier_name === manufacturerFilter).length > 0 && selectedSampleIds.length === samples.filter(s => manufacturerFilter === 'All' || s.supplier_name === manufacturerFilter).length}
-                      onChange={() => handleSelectAll(samples.filter(s => manufacturerFilter === 'All' || s.supplier_name === manufacturerFilter))}
-                      style={{ cursor: 'pointer', width: 18, height: 18 }}
-                    />
-                  </div>
-                  <div className="sample-col-number" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Article Code</div>
-                  <div className="sample-col-name" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Art. Description</div>
-                  <div className="sample-col-manufacturer" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Manufacturer</div>
-                  <div className="sample-col-type" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Type</div>
-                  <div className="sample-col-status" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Status</div>
+            <div className="samples-table" style={{ border: '1px solid #eee', borderRadius: '8px', overflow: 'hidden', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+              <div className="samples-table-header" style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 1fr) minmax(80px, 1fr) minmax(140px, 1.5fr) minmax(180px, 2fr) minmax(180px, 2fr) minmax(100px, 1fr) minmax(140px, 1.5fr) minmax(80px, 1fr)', gap: '16px', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #eee', background: '#fff', borderRadius: '8px 8px 0 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 600, color: '#666' }}>
+                  <input
+                    type="checkbox"
+                    checked={samples.filter(s => manufacturerFilter === 'All' || s.supplier_name === manufacturerFilter).length > 0 && selectedSampleIds.length === samples.filter(s => manufacturerFilter === 'All' || s.supplier_name === manufacturerFilter).length}
+                    onChange={() => handleSelectAll(samples.filter(s => manufacturerFilter === 'All' || s.supplier_name === manufacturerFilter))}
+                    style={{ cursor: 'pointer', width: 16, height: 16, margin: 0 }}
+                  />
+                  PDF
                 </div>
-                <div className="sample-col-actions"></div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#666' }}>Photo</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#666' }}>Art. Code</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#666' }}>Art. Description</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#666' }}>Manufacturer</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#666' }}>Type</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#666', textAlign: 'center' }}>Status</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#666', textAlign: 'center' }}>Actions</div>
               </div>
               {samples
                 .filter(sample => manufacturerFilter === 'All' || sample.supplier_name === manufacturerFilter)
@@ -1521,85 +1529,87 @@ function QualityControl() {
                 samples
                   .filter(sample => manufacturerFilter === 'All' || sample.supplier_name === manufacturerFilter)
                   .map((sample) => (
-                    <div key={sample.id} className="samples-table-row">
-                      <div className="sample-row-link" style={{ gridTemplateColumns: '48px 140px 1.5fr 1fr 100px 120px', cursor: 'default' }}>
-                        <div className="sample-col-check" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <input
-                            type="checkbox"
-                            checked={selectedSampleIds.includes(sample.id)}
-                            onChange={(e) => handleSelectSample(e, sample.id)}
-                            style={{ cursor: 'pointer', width: 18, height: 18 }}
-                          />
-                        </div>
-                        <Link to={`/samples/${sample.id}?fromCategory=${selectedCategory}&fromYear=${selectedYear}&fromSeason=${selectedSeason}`} style={{ display: 'contents', color: 'inherit', textDecoration: 'none' }}>
-                          <div className="sample-col-number" style={{ fontSize: '14px', fontWeight: 500 }}>{sample.sample_code}</div>
-                          <div className="sample-col-name" style={{ fontSize: '14px', fontWeight: 500 }}>{sample.name}</div>
-                          <div className="sample-col-manufacturer" style={{ fontSize: '14px', fontWeight: 500 }}>{sample.supplier_name || '—'}</div>
-                          <div className="sample-col-type" style={{ fontSize: '14px', fontWeight: 500 }}>{sample.product_type}</div>
-                          <div className="sample-col-status" style={{ fontSize: '14px', fontWeight: 500 }}>
-                            {sample.status !== 'Approved' && (
-                              <span className={`badge ${getStatusBadgeClass(sample.status)}`} style={{ fontSize: '12px' }}>
-                                {sample.status}
-                              </span>
-                            )}
-                          </div>
-                        </Link>
+                    <div key={sample.id} className="samples-table-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 1fr) minmax(80px, 1fr) minmax(140px, 1.5fr) minmax(180px, 2fr) minmax(180px, 2fr) minmax(100px, 1fr) minmax(140px, 1.5fr) minmax(80px, 1fr)', gap: '16px', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #eee', transition: 'background 0.2s' }}>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedSampleIds.includes(sample.id)}
+                          onChange={(e) => handleSelectSample(e, sample.id)}
+                          style={{ cursor: 'pointer', width: 16, height: 16, margin: 0 }}
+                        />
                       </div>
-                      <div className="sample-col-actions">
+                      
+                      <Link to={`/samples/${sample.id}?fromCategory=${selectedCategory}&fromYear=${selectedYear}&fromSeason=${selectedSeason}`} style={{ display: 'contents', color: 'inherit', textDecoration: 'none' }}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          {sample.photos && sample.photos.length > 0 ? (
+                            <img src={sample.photos.find(p => p.is_main_photo)?.file_path || sample.photos[0].file_path} alt="Preview" style={{ width: 72, height: 72, borderRadius: 8, objectFit: 'cover', border: '1px solid #eee' }} />
+                          ) : (
+                            <div style={{ width: 72, height: 72, borderRadius: 8, background: '#f5f5f5', border: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <span style={{ fontSize: 24, color: '#ccc' }}>📷</span>
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '14px', fontWeight: 500 }}>{sample.sample_code}</div>
+                        <div style={{ fontSize: '14px', fontWeight: 700, color: '#111' }}>{sample.name}</div>
+                        <div style={{ fontSize: '14px', fontWeight: 500, color: '#444' }}>{sample.supplier_name || '—'}</div>
+                        <div style={{ fontSize: '14px', fontWeight: 500, color: '#666' }}>{sample.product_type}</div>
+                        <div style={{ fontSize: '14px', fontWeight: 500, display: 'flex', justifyContent: 'center' }}>
+                          <span className={`badge ${getStatusBadgeClass(sample.status)}`} style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '12px' }}>
+                            {sample.status.toUpperCase()}
+                          </span>
+                        </div>
+                      </Link>
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                         <button
-                          className="sample-action-btn"
-                          onClick={(e) => handleEditSample(e, sample)}
-                          title="Edit article"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleEditSample(e, sample);
+                          }}
+                          style={{ width: 32, height: 32, borderRadius: '50%', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', transition: 'all 0.2s' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#f5f5f5'; e.currentTarget.style.color = '#111'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#666'; }}
+                          title="Edit Article"
                         >
-                          ✎
+                          <Edit2 size={18} />
                         </button>
                         <button
-                          className="sample-action-btn sample-action-delete"
-                          onClick={(e) => handleDeleteSample(e, sample)}
-                          title="Delete article"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleDeleteSample(e, sample);
+                          }}
+                          style={{ width: 32, height: 32, borderRadius: '50%', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', transition: 'all 0.2s' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#fff1f0'; e.currentTarget.style.color = '#ff4d4f'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#999'; }}
+                          title="Verwijder dit artikel"
                         >
-                          ✕
+                          <Trash2 size={18} />
                         </button>
                       </div>
                     </div>
                   ))
               ) : (
-                <div className="samples-table-row" style={{ display: 'grid', gridTemplateColumns: '1fr 130px', alignItems: 'center', minHeight: 64, color: '#bbb' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '48px 140px 1.5fr 1fr 100px 120px', padding: '0 24px', alignItems: 'center' }}>
-                    <div className="sample-col-check"></div>
-                    <div className="sample-col-number"></div>
-                    <div className="sample-col-name" style={{ textAlign: 'center' }}>Geen articles gevonden voor deze manufacturer</div>
-                    <div className="sample-col-manufacturer"></div>
-                    <div className="sample-col-type"></div>
-                    <div className="sample-col-status"></div>
-                  </div>
-                  <div className="sample-col-actions"></div>
+                <div className="samples-table-row" style={{ display: 'grid', gridTemplateColumns: '1fr', alignItems: 'center', minHeight: 64, color: '#bbb', padding: '0 24px', textAlign: 'center' }}>
+                  Geen articles gevonden voor deze manufacturer
                 </div>
               )}
             </div>
           ) : (
-            <div className="samples-table">
-              <div className="samples-table-header" style={{ display: 'grid', gridTemplateColumns: '1fr 130px', alignItems: 'center', minHeight: 48 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '48px 140px 1.5fr 1fr 100px 120px', padding: '0 24px' }}>
-                  <div className="sample-col-check"></div>
-                  <div className="sample-col-number" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Art. Number</div>
-                  <div className="sample-col-name" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Art. Description</div>
-                  <div className="sample-col-manufacturer" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Manufacturer</div>
-                  <div className="sample-col-type" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Type</div>
-                  <div className="sample-col-status" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>Status</div>
-                </div>
-                <div className="sample-col-actions"></div>
+            <div className="samples-table" style={{ border: '1px solid #eee', borderRadius: '8px', overflow: 'hidden', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+              <div className="samples-table-header" style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 1fr) minmax(80px, 1fr) minmax(140px, 1.5fr) minmax(180px, 2fr) minmax(180px, 2fr) minmax(100px, 1fr) minmax(140px, 1.5fr) minmax(80px, 1fr)', gap: '16px', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #eee', background: '#fff', borderRadius: '8px 8px 0 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 600, color: '#666' }}>PDF</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#666' }}>Photo</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#666' }}>Art. Code</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#666' }}>Art. Description</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#666' }}>Manufacturer</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#666' }}>Type</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#666', textAlign: 'center' }}>Status</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#666', textAlign: 'center' }}>Actions</div>
               </div>
-              <div className="samples-table-row" style={{ display: 'grid', gridTemplateColumns: '1fr 130px', alignItems: 'center', minHeight: 64, color: '#bbb' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '48px 140px 1.5fr 1fr 100px 120px', padding: '0 24px', alignItems: 'center' }}>
-                  <div className="sample-col-check"></div>
-                  <div className="sample-col-number"></div>
-                  <div className="sample-col-name" style={{ textAlign: 'center' }}>Geen articles gevonden</div>
-                  <div className="sample-col-manufacturer"></div>
-                  <div className="sample-col-type"></div>
-                  <div className="sample-col-status"></div>
-                </div>
-                <div className="sample-col-actions"></div>
+              <div className="samples-table-row" style={{ display: 'grid', gridTemplateColumns: '1fr', alignItems: 'center', minHeight: 64, color: '#bbb', padding: '0 24px', textAlign: 'center' }}>
+                Geen articles gevonden
               </div>
             </div>
           )}

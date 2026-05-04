@@ -421,3 +421,14 @@ h3 {
 .gap-sm { gap: var(--spacing-sm); }
 .gap-md { gap: var(--spacing-md); }
 .gap-lg { gap: var(--spacing-lg); }
+
+/* Zebra striping for samples table */
+.samples-table-row:nth-child(even) {
+  background-color: #f5f5f5;
+}
+.samples-table-row:nth-child(odd) {
+  background-color: #ffffff;
+}
+.samples-table-row:hover {
+  background-color: #fafafa;
+}

@@ -18,7 +18,8 @@ router.get('/', async (req, res) => {
         collection:collections(name, season, year, category),
         responsible_user:users!responsible_user_id(first_name, last_name, email),
         quality_reviews(*, reviewer:users!reviewer_id(first_name, last_name)),
-        supplier_communications(*)
+        supplier_communications(*),
+        photos:sample_photos(*)
       `);
 
     if (collection_id) {

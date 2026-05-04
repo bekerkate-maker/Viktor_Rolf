@@ -532,6 +532,16 @@ function SampleDetail() {
     }
   };
 
+  const handleSetMainPhoto = async (photoId: number) => {
+    try {
+      await photosAPI.setMainPhoto(photoId);
+      if (id) await loadPhotos(id);
+    } catch (error: any) {
+      console.error('Error setting main photo:', error);
+      alert('Failed to set main photo');
+    }
+  };
+
   const handleDownloadPDF = () => {
     // Trigger printing dialog
     window.print();
@@ -1577,36 +1587,69 @@ function SampleDetail() {
             {lightboxIndex + 1} / {photos.length}
           </div>
 
-          {/* Delete button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeletePhoto(photos[lightboxIndex].id);
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              marginTop: 12,
-              padding: '8px 16px',
-              background: 'rgba(220, 53, 69, 0.9)',
-              border: 'none',
-              borderRadius: 6,
-              color: '#fff',
-              cursor: 'pointer',
-              fontSize: 14,
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(220, 53, 69, 1)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(220, 53, 69, 0.9)';
-            }}
-          >
-            <Trash2 size={16} />
-            Delete Photo
-          </button>
+          <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
+            {/* Set Main Photo button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSetMainPhoto(photos[lightboxIndex].id);
+              }}
+              disabled={photos[lightboxIndex].is_main_photo}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 16px',
+                background: photos[lightboxIndex].is_main_photo ? '#fff' : 'rgba(255, 255, 255, 0.2)',
+                border: 'none',
+                borderRadius: 6,
+                color: photos[lightboxIndex].is_main_photo ? '#111' : '#fff',
+                cursor: photos[lightboxIndex].is_main_photo ? 'default' : 'pointer',
+                fontSize: 14,
+                fontWeight: photos[lightboxIndex].is_main_photo ? 700 : 500,
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                if (!photos[lightboxIndex].is_main_photo) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                if (!photos[lightboxIndex].is_main_photo) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+              }}
+            >
+              <Check size={16} />
+              {photos[lightboxIndex].is_main_photo ? 'Main Photo' : 'Set as Main Photo'}
+            </button>
+
+            {/* Delete button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeletePhoto(photos[lightboxIndex].id);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 16px',
+                background: 'rgba(220, 53, 69, 0.9)',
+                border: 'none',
+                borderRadius: 6,
+                color: '#fff',
+                cursor: 'pointer',
+                fontSize: 14,
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(220, 53, 69, 1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(220, 53, 69, 0.9)';
+              }}
+            >
+              <Trash2 size={16} />
+              Delete Photo
+            </button>
+          </div>
 
           {/* Thumbnail strip */}
           <div style={{
@@ -1618,22 +1661,28 @@ function SampleDetail() {
             padding: '8px 0',
           }}>
             {photos.map((photo, index) => (
-              <img
-                key={photo.id}
-                src={photo.file_path}
-                alt={photo.file_name}
-                onClick={(e) => { e.stopPropagation(); setLightboxIndex(index); }}
-                style={{
-                  width: 60,
-                  height: 60,
-                  objectFit: 'cover',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  border: index === lightboxIndex ? '2px solid #fff' : '2px solid transparent',
-                  opacity: index === lightboxIndex ? 1 : 0.6,
-                  transition: 'all 0.2s',
-                }}
-              />
+              <div key={photo.id} style={{ position: 'relative' }}>
+                <img
+                  src={photo.file_path}
+                  alt={photo.file_name}
+                  onClick={(e) => { e.stopPropagation(); setLightboxIndex(index); }}
+                  style={{
+                    width: 60,
+                    height: 60,
+                    objectFit: 'cover',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    border: index === lightboxIndex ? '2px solid #fff' : '2px solid transparent',
+                    opacity: index === lightboxIndex ? 1 : 0.6,
+                    transition: 'all 0.2s',
+                  }}
+                />
+                {photo.is_main_photo && (
+                  <div style={{ position: 'absolute', top: -4, right: -4, background: '#111', color: '#fff', borderRadius: '50%', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Check size={10} />
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         </div>
