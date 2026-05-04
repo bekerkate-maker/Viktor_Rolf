@@ -290,7 +290,7 @@ router.put('/:id', async (req, res) => {
     if (updateError) throw updateError;
 
     // Log status change in audit trail
-    if (oldSample.status !== status && (user_id || responsible_user_id)) {
+    if (status !== undefined && oldSample.status !== status && (user_id || responsible_user_id)) {
       await supabase
         .from('audit_trail')
         .insert({
