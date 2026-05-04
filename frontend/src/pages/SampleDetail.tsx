@@ -1047,8 +1047,8 @@ function SampleDetail() {
           {/* Subtle Navigation Arrows - Moved to top right */}
           <div style={{ 
             position: 'absolute', 
-            top: 38, 
-            right: 48, 
+            top: 22, 
+            right: 24, 
             display: 'flex', 
             alignItems: 'center', 
             gap: 8, 
