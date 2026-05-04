@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { collectionsAPI, samplesAPI, photosAPI, manufacturersAPI } from '../api';
 import type { Collection, Sample } from '../types';
@@ -99,6 +99,19 @@ function QualityControl() {
   const [manufacturers, setManufacturers] = useState<string[]>([]);
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
   const [totalManufacturerRejected, setTotalManufacturerRejected] = useState<number | null>(null);
+  const collectionRejectedCount = useMemo(() => {
+    return samples.reduce((total, s) => {
+      try {
+        const parsed = JSON.parse(s.internal_notes || "{}");
+        if (parsed && parsed._isJsonBlob) {
+          const fitRejectedCount = Object.values(parsed.fitChecks || {}).filter(v => v === 'reject').length;
+          const workRejectedCount = Object.values(parsed.workChecks || {}).filter(v => v === 'reject').length;
+          return total + fitRejectedCount + workRejectedCount;
+        }
+      } catch (e) {}
+      return total;
+    }, 0);
+  }, [samples]);
 
   // Add click outside handler to close menu
   useEffect(() => {
@@ -898,10 +911,10 @@ function QualityControl() {
                     Manufacturer Performance Overview
                   </div>
                   <div style={{ fontSize: '14px', color: '#666' }}>
-                    Total Rejected Defaults across all productions
+                    Total Rejected Defaults {params.collectionId ? `in ${collections[0]?.name || ''}` : 'across all productions'}
                   </div>
-                  <div style={{ fontSize: '24px', fontWeight: 300, color: totalManufacturerRejected > 0 ? '#ff4d4f' : '#43a047', marginTop: 8 }}>
-                    {totalManufacturerRejected}
+                  <div style={{ fontSize: '24px', fontWeight: 300, color: (params.collectionId ? (collectionRejectedCount || 0) : (totalManufacturerRejected || 0)) > 0 ? '#ff4d4f' : '#43a047', marginTop: 8 }}>
+                    {params.collectionId ? collectionRejectedCount : totalManufacturerRejected}
                   </div>
                 </div>
               )}
@@ -984,10 +997,10 @@ function QualityControl() {
                     Manufacturer Performance Overview
                   </div>
                   <div style={{ fontSize: '14px', color: '#666' }}>
-                    Total Rejected Defaults across all productions
+                    Total Rejected Defaults {params.collectionId ? `in ${collections[0]?.name || ''}` : 'across all productions'}
                   </div>
-                  <div style={{ fontSize: '24px', fontWeight: 300, color: totalManufacturerRejected > 0 ? '#ff4d4f' : '#43a047', marginTop: 8 }}>
-                    {totalManufacturerRejected}
+                  <div style={{ fontSize: '24px', fontWeight: 300, color: (params.collectionId ? (collectionRejectedCount || 0) : (totalManufacturerRejected || 0)) > 0 ? '#ff4d4f' : '#43a047', marginTop: 8 }}>
+                    {params.collectionId ? collectionRejectedCount : totalManufacturerRejected}
                   </div>
                 </div>
               )}

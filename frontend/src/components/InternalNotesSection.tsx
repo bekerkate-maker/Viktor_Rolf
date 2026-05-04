@@ -12,6 +12,7 @@ interface NoteEntry {
   date: string;
 }
 
+const InternalNotesSection: React.FC<{ sample: Sample }> = ({ sample }) => {
   const [savedNote, setSavedNote] = useState<NoteEntry | null>(() => {
     try {
       const parsed = JSON.parse(sample.internal_notes || '{}');
