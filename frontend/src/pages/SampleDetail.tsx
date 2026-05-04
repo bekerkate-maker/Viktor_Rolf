@@ -8,7 +8,7 @@ import EditSampleModal from '../components/EditSampleModal';
 // Voeg Lucide icons toe voor buttons
 import { Plus, X, ChevronLeft, ChevronRight, Trash2, Pencil, Check, Minus, Download, Scissors, Ruler, ClipboardCheck, Save, EyeOff, Eye, Activity, RefreshCw, Tag, Calendar, Factory, User, AlignLeft } from 'lucide-react';
 
-const STATUS_OPTIONS = ['In Review', 'Changes Needed', 'Approved', 'Rejected'] as const;
+const STATUS_OPTIONS = ['None', 'In Review', 'Changes Needed', 'Approved', 'Rejected'] as const;
 
 function SampleDetail() {
   const params = useParams<{ id: string; collectionId?: string }>();
@@ -1108,7 +1108,24 @@ function SampleDetail() {
             style={{ cursor: 'pointer' }}
             title="Click to change status"
           >
-            {sample.status !== 'Approved' && getStatusBadge(sample.status)}
+            {sample.status === 'None' ? (
+              <div style={{
+                padding: '6px 16px',
+                background: '#f9f9f9',
+                border: '1px dashed #ccc',
+                borderRadius: 20,
+                color: '#999',
+                fontSize: 12,
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+              }}>
+                <EyeOff size={14} /> No Status
+              </div>
+            ) : (
+              getStatusBadge(sample.status)
+            )}
           </div>
 
           {showStatusDropdown && (
