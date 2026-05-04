@@ -1103,79 +1103,9 @@ function SampleDetail() {
             </button>
           </div>
 
-        {/* Clickable status dropdown */}
+        {/* Status Display (Non-interactive) */}
         <div style={{ position: 'relative' }}>
-          <div
-            onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-            style={{ cursor: 'pointer' }}
-            title="Click to change status"
-          >
-            {(!sample.status || sample.status === 'None') ? (
-              <div style={{
-                padding: '6px 16px',
-                background: '#f9f9f9',
-                border: '1px dashed #ccc',
-                borderRadius: 20,
-                color: '#999',
-                fontSize: 12,
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6
-              }}>
-                <EyeOff size={14} /> No Status
-              </div>
-            ) : (
-              getStatusBadge(sample.status)
-            )}
-          </div>
-
-          {showStatusDropdown && (
-            <>
-              {/* Invisible overlay to close dropdown when clicking outside */}
-              <div
-                onClick={() => setShowStatusDropdown(false)}
-                style={{
-                  position: 'fixed',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  zIndex: 99,
-                }}
-              />
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                marginTop: 8,
-                background: '#fff',
-                borderRadius: 8,
-                boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                overflow: 'hidden',
-                zIndex: 100,
-                minWidth: 180,
-              }}>
-                {STATUS_OPTIONS.map((status) => (
-                  <div
-                    key={status}
-                    onClick={() => handleStatusChange(status)}
-                    style={{
-                      padding: '12px 16px',
-                      cursor: 'pointer',
-                      background: sample.status === status ? '#f5f5f5' : '#fff',
-                      borderLeft: sample.status === status ? '3px solid #111' : '3px solid transparent',
-                      transition: 'background 0.2s',
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = sample.status === status ? '#f5f5f5' : '#fff'}
-                  >
-                    {getStatusBadge(status)}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+          {sample.status && sample.status !== 'None' && getStatusBadge(sample.status)}
         </div>
       </div>
     </div>
