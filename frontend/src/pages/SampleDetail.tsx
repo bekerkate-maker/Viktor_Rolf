@@ -173,14 +173,15 @@ function SampleDetail() {
         onDrop={(e) => sectionIndex !== undefined && itemIndex !== undefined && handleDrop(e, sectionIndex, itemIndex, sections, setStateSections, type)}
         style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'minmax(0, 1fr) 90px 90px 90px 40px', 
-          gap: 16, 
+          gridTemplateColumns: 'minmax(0, 1fr) 70px 70px 70px 40px', 
+          gap: 8, 
           alignItems: 'center', 
           padding: '12px 0', 
           borderBottom: '1px solid #f5f5f5',
           cursor: !showHidden ? 'grab' : 'default',
           background: draggedItemInfo?.itemIndex === itemIndex && draggedItemInfo?.sectionIndex === sectionIndex && draggedItemInfo?.type === type ? '#f0f0f0' : 'transparent',
-          transition: 'background 0.2s'
+          transition: 'background 0.2s',
+          overflow: 'hidden'
         }}
       >
         <div style={{ minWidth: 0, fontWeight: 500, fontSize: 15, display: 'flex', flexDirection: 'column', color: showHidden ? '#888' : '#111' }}>
@@ -335,11 +336,11 @@ function SampleDetail() {
           )}
         </div>
 
-        <div className="assessment-checklist-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 90px 90px 90px 40px', gap: 16, alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: 8, marginBottom: 12, fontWeight: 600, color: '#888', fontSize: 13, textTransform: 'uppercase' }}>
+        <div className="assessment-checklist-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 70px 70px 70px 40px', gap: 8, alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: 8, marginBottom: 12, fontWeight: 600, color: '#888', fontSize: 11, textTransform: 'uppercase' }}>
           <div>Item</div>
-          <div style={{ textAlign: 'center', color: '#e53935', fontSize: 11 }}>Rejected</div>
-          <div style={{ textAlign: 'center', color: '#ffb300', fontSize: 11 }}>Review</div>
-          <div style={{ textAlign: 'center', color: '#43a047', fontSize: 11 }}>Approved</div>
+          <div style={{ textAlign: 'center', color: '#e53935' }}>Rejected</div>
+          <div style={{ textAlign: 'center', color: '#ffb300' }}>Review</div>
+          <div style={{ textAlign: 'center', color: '#43a047' }}>Approved</div>
           <div />
         </div>
 
@@ -1359,11 +1360,11 @@ function SampleDetail() {
           </div>
 
           {/* Checklijst secties */}
-          <div className="assessment-checklists-container" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 24, marginBottom: 12 }}>
-            <div className="print-page-box print-fit-box">
+          <div className="assessment-checklists-container responsive-grid" style={{ marginBottom: 12 }}>
+            <div className="print-page-box print-fit-box" style={{ minWidth: 0 }}>
               {renderChecklist('Fit', fitSections, setFitSections, fitChecks, setFitChecks, fitComments, setFitComments, Ruler, newFitItem, setNewFitItem, hiddenFitItems, setHiddenFitItems, showHiddenFit, setShowHiddenFit, selectedFitCategory, setSelectedFitCategory)}
             </div>
-            <div className="print-page-box print-work-box">
+            <div className="print-page-box print-work-box" style={{ minWidth: 0 }}>
               <div className="print-only print-flex-row" style={{ display: 'none', alignItems: 'center', gap: 12, marginBottom: 24, borderBottom: '2px solid #e9ecef', paddingBottom: 16 }}>
                 <div style={{ background: '#111', color: '#fff', padding: 10, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <ClipboardCheck size={24} />

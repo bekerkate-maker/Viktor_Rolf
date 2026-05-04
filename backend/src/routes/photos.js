@@ -1,26 +1,13 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 import { supabase } from '../database/supabase.js';
 import { verifyToken } from '../middleware/auth.js';
 
-const __filename = import.meta.url ? fileURLToPath(import.meta.url) : '';
-const __dirname = __filename ? dirname(__filename) : process.cwd();
-
 const router = express.Router();
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, '../../uploads/samples');
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'sample-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Use memory storage for Supabase uploads
+const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
@@ -39,10 +26,14 @@ const upload = multer({
   }
 });
 
-// Upload photos for a sample
+// Upload photos for a sample to Supabase Storage
 router.post('/samples/:sampleId', verifyToken, upload.array('photos', 10), async (req, res) => {
   try {
     const { sampleId } = req.params;
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' });
+    }
 
     // Verify sample exists in Supabase
     const { data: sample, error: sampleError } = await supabase
@@ -61,31 +52,56 @@ router.post('/samples/:sampleId', verifyToken, upload.array('photos', 10), async
       .select('display_order')
       .eq('sample_id', sampleId)
       .order('display_order', { ascending: false })
-      .limit(1)
-      .single();
+      .limit(1);
     
-    let nextOrder = (maxOrderData?.display_order || 0) + 1;
+    let nextOrder = (maxOrderData?.[0]?.display_order || 0) + 1;
+    const uploadedPhotos = [];
 
-    // Insert photo records
-    const photosToInsert = req.files.map(file => ({
-      sample_id: sampleId,
-      file_path: `/uploads/samples/${file.filename}`,
-      file_name: file.originalname,
-      display_order: nextOrder++,
-      is_main_photo: false
-    }));
+    for (const file of req.files) {
+      const fileExt = path.extname(file.originalname).toLowerCase();
+      const fileName = `sample-${sampleId}-${Date.now()}-${Math.round(Math.random() * 1E9)}${fileExt}`;
+      const filePath = `samples/${sampleId}/${fileName}`;
 
-    const { data: photos, error: insertError } = await supabase
-      .from('sample_photos')
-      .insert(photosToInsert)
-      .select();
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('sample-photos')
+        .upload(filePath, file.buffer, {
+          contentType: file.mimetype,
+          cacheControl: '3600',
+          upsert: false
+        });
 
-    if (insertError) {
-      console.error('Insert error:', insertError);
-      return res.status(500).json({ error: 'Failed to save photo records' });
+      if (uploadError) {
+        console.error('Supabase upload error:', uploadError);
+        continue; // Skip this file and try next
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('sample-photos')
+        .getPublicUrl(filePath);
+
+      // Insert record into database
+      const { data: photoRecord, error: insertError } = await supabase
+        .from('sample_photos')
+        .insert({
+          sample_id: sampleId,
+          file_path: publicUrl,
+          file_name: file.originalname,
+          display_order: nextOrder++,
+          is_main_photo: false
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Database insert error:', insertError);
+      } else {
+        uploadedPhotos.push(photoRecord);
+      }
     }
 
-    res.status(201).json(photos);
+    res.status(201).json(uploadedPhotos);
   } catch (error) {
     console.error('Photo upload error:', error);
     res.status(500).json({ error: error.message || 'Failed to upload photos' });
@@ -135,13 +151,13 @@ router.put('/:photoId/set-main', verifyToken, async (req, res) => {
     // Reset all photos for this sample to not be main
     await supabase
       .from('sample_photos')
-      .update({ is_main_photo: 0 })
+      .update({ is_main_photo: false })
       .eq('sample_id', photo.sample_id);
 
     // Set this photo as main
     await supabase
       .from('sample_photos')
-      .update({ is_main_photo: 1 })
+      .update({ is_main_photo: true })
       .eq('id', photoId);
 
     res.json({ message: 'Main photo updated successfully' });
@@ -173,7 +189,7 @@ router.put('/:photoId/order', verifyToken, async (req, res) => {
   }
 });
 
-// Delete a photo
+// Delete a photo from both database and Supabase Storage
 router.delete('/:photoId', verifyToken, async (req, res) => {
   try {
     const { photoId } = req.params;
@@ -187,6 +203,20 @@ router.delete('/:photoId', verifyToken, async (req, res) => {
 
     if (fetchError || !photo) {
       return res.status(404).json({ error: 'Photo not found' });
+    }
+
+    // Attempt to delete from Supabase Storage if it's a Supabase URL
+    if (photo.file_path.includes('supabase.co')) {
+      try {
+        // Extract the path from the URL
+        const urlParts = photo.file_path.split('/sample-photos/');
+        if (urlParts.length > 1) {
+          const storagePath = urlParts[1];
+          await supabase.storage.from('sample-photos').remove([storagePath]);
+        }
+      } catch (storageErr) {
+        console.error('Error deleting from storage:', storageErr);
+      }
     }
 
     // Delete from database
