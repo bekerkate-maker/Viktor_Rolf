@@ -1070,26 +1070,74 @@ function QualityControl() {
               </div>
             </div>
 
-            {/* Photos Strip (Max 4) */}
-            {previewPhotos.length > 0 && (
-              <div style={{ 
-                display: 'flex', 
-                gap: 16, 
-                overflowX: 'auto', 
-                paddingBottom: 24, 
-                marginBottom: 40,
-                borderBottom: '1px solid #eee'
-              }}>
-                {previewPhotos.slice(0, 4).map(photo => (
-                  <img 
-                    key={photo.id}
-                    src={photo.file_path && photo.file_path.startsWith('http') ? photo.file_path : photo.file_path}
-                    alt="Preview"
-                    style={{ height: '280px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
-                  />
-                ))}
-              </div>
-            )}
+            {/* Photos Strip (Always maintains space for at least 2 photos) */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 16, 
+              overflowX: 'auto', 
+              paddingBottom: 24, 
+              marginBottom: 40,
+              borderBottom: '1px solid #eee',
+              minHeight: '280px' // Ensure it doesn't collapse
+            }}>
+              {previewPhotos.length > 0 ? (
+                <>
+                  {previewPhotos.slice(0, 4).map(photo => (
+                    <img 
+                      key={photo.id}
+                      src={photo.file_path && photo.file_path.startsWith('http') ? photo.file_path : photo.file_path}
+                      alt="Preview"
+                      style={{ height: '280px', minWidth: '210px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0, background: '#f5f5f5' }}
+                    />
+                  ))}
+                  {/* Fill up to 2 slots if there is only 1 photo */}
+                  {previewPhotos.length === 1 && (
+                    <div style={{ 
+                      height: '280px', 
+                      width: '210px', 
+                      borderRadius: '4px', 
+                      background: '#f9f9f9', 
+                      border: '1px solid #eee',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#bbb',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      letterSpacing: '1px',
+                      textTransform: 'uppercase',
+                      flexShrink: 0
+                    }}>
+                      [ PHOTO SLOT 2 ]
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Always show 2 placeholders if 0 photos */}
+                  {[1, 2].map(i => (
+                    <div key={i} style={{ 
+                      height: '280px', 
+                      width: '210px', 
+                      borderRadius: '4px', 
+                      background: '#f9f9f9', 
+                      border: '1px solid #eee',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#bbb',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      letterSpacing: '1px',
+                      textTransform: 'uppercase',
+                      flexShrink: 0
+                    }}>
+                      [ NO PHOTO ]
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48 }}>
               <div>
