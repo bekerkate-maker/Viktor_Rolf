@@ -98,6 +98,7 @@ function QualityControl() {
   const [showManufacturersModal, setShowManufacturersModal] = useState(false);
   const [manufacturers, setManufacturers] = useState<string[]>([]);
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
+  const [totalManufacturerRejected, setTotalManufacturerRejected] = useState<number | null>(null);
 
   // Add click outside handler to close menu
   useEffect(() => {
@@ -233,11 +234,27 @@ function QualityControl() {
     if (!selectedManufacturer) return;
     try {
       setLoading(true);
-      // Fetch all samples for this manufacturer to find collections
+      // Fetch all samples for this manufacturer to find collections and calculate rejected count
       const res = await samplesAPI.getAll();
       const manufacturerSamples = res.data.filter(s => s.supplier_name === selectedManufacturer);
-      const collectionIds = Array.from(new Set(manufacturerSamples.map(s => s.collection_id)));
       
+      // Calculate total rejected defaults
+      let totalRejected = 0;
+      manufacturerSamples.forEach(s => {
+        if (s.internal_notes) {
+          try {
+            const parsed = JSON.parse(s.internal_notes);
+            if (parsed && parsed._isJsonBlob) {
+              const fitRejectedCount = Object.values(parsed.fitChecks || {}).filter(v => v === 'reject').length;
+              const workRejectedCount = Object.values(parsed.workChecks || {}).filter(v => v === 'reject').length;
+              totalRejected += fitRejectedCount + workRejectedCount;
+            }
+          } catch (e) {}
+        }
+      });
+      setTotalManufacturerRejected(totalRejected);
+
+      const collectionIds = Array.from(new Set(manufacturerSamples.map(s => s.collection_id)));
       const allCollections = await fetchCollectionsCached();
       const filtered = allCollections.filter((c: any) => collectionIds.includes(c.id));
       
@@ -839,25 +856,56 @@ function QualityControl() {
           {loading ? (
             <div className="loading-state">Loading productions...</div>
           ) : manufacturerCollections.length > 0 ? (
-            <div className="collections-list">
-              {manufacturerCollections.map(collection => (
-                <div 
-                  key={collection.id} 
-                  className="collection-item"
-                  onClick={() => {
-                    navigate(`/quality-control/manufacturer/${selectedManufacturer}/collection/${collection.id}`);
-                  }}
-                >
-                  <div>
-                    <div className="collection-item-name">{collection.name}</div>
-                    <div className="collection-item-meta">
-                      {collection.category} · {collection.season} {collection.year}
+            <>
+              <div className="collections-list">
+                {manufacturerCollections.map(collection => (
+                  <div 
+                    key={collection.id} 
+                    className="collection-item"
+                    onClick={() => {
+                      navigate(`/quality-control/manufacturer/${selectedManufacturer}/collection/${collection.id}`);
+                    }}
+                  >
+                    <div>
+                      <div className="collection-item-name">{collection.name}</div>
+                      <div className="collection-item-meta">
+                        {collection.category} · {collection.season} {collection.year}
+                      </div>
                     </div>
+                    <div className="collection-item-arrow">→</div>
                   </div>
-                  <div className="collection-item-arrow">→</div>
+                ))}
+              </div>
+              
+              {totalManufacturerRejected !== null && (
+                <div style={{ 
+                  marginTop: 64, 
+                  padding: '40px 0', 
+                  borderTop: '1px solid #eee', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ 
+                    fontSize: '11px', 
+                    fontWeight: 700, 
+                    letterSpacing: '2px', 
+                    color: '#999', 
+                    textTransform: 'uppercase',
+                    marginBottom: 12
+                  }}>
+                    Manufacturer Performance Overview
+                  </div>
+                  <div style={{ fontSize: '32px', fontWeight: 300, color: totalManufacturerRejected > 0 ? '#ff4d4f' : '#43a047' }}>
+                    {totalManufacturerRejected}
+                  </div>
+                  <div style={{ fontSize: '14px', color: '#666', marginTop: 4 }}>
+                    Total Rejected Defaults across all productions
+                  </div>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           ) : (
             <div className="empty-state">No productions found for this manufacturer.</div>
           )}
@@ -868,51 +916,82 @@ function QualityControl() {
       {params.collectionId && params.manufacturer && !loading && (
         <div className="articles-view" style={{ marginTop: 24 }}>
           {samples.length > 0 ? (
-            <div className="samples-list-detailed" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-              {samples.map((sample) => (
-                <div
-                  key={sample.id}
-                  onClick={() => handleOpenPreview(sample)}
-                  className="sample-list-item-detailed"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    background: '#fff',
-                    border: '1px solid #eee',
-                    padding: '24px',
-                    borderRadius: '4px',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#000';
-                    e.currentTarget.style.transform = 'translateX(4px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#eee';
-                    e.currentTarget.style.transform = 'translateX(0)';
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <span className="sample-code" style={{ 
-                      fontSize: '11px', 
-                      fontWeight: 700, 
-                      letterSpacing: '1px', 
-                      background: '#f5f5f5', 
-                      padding: '4px 8px', 
-                      marginRight: 16 
-                    }}>
-                      {sample.sample_code}
-                    </span>
-                    <span style={{ fontSize: '18px', fontWeight: 500 }}>{sample.name}</span>
+            <>
+              <div className="samples-list-detailed" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                {samples.map((sample) => (
+                  <div
+                    key={sample.id}
+                    onClick={() => handleOpenPreview(sample)}
+                    className="sample-list-item-detailed"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      background: '#fff',
+                      border: '1px solid #eee',
+                      padding: '24px',
+                      borderRadius: '4px',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#000';
+                      e.currentTarget.style.transform = 'translateX(4px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#eee';
+                      e.currentTarget.style.transform = 'translateX(0)';
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <span className="sample-code" style={{ 
+                        fontSize: '11px', 
+                        fontWeight: 700, 
+                        letterSpacing: '1px', 
+                        background: '#f5f5f5', 
+                        padding: '4px 8px', 
+                        marginRight: 16 
+                      }}>
+                        {sample.sample_code}
+                      </span>
+                      <span style={{ fontSize: '18px', fontWeight: 500 }}>{sample.name}</span>
+                    </div>
+                    <div style={{ color: '#999', fontSize: '12px', letterSpacing: '1px' }}>
+                      CLICK FOR DETAILS →
+                    </div>
                   </div>
-                  <div style={{ color: '#999', fontSize: '12px', letterSpacing: '1px' }}>
-                    CLICK FOR DETAILS →
+                ))}
+              </div>
+
+              {totalManufacturerRejected !== null && (
+                <div style={{ 
+                  marginTop: 64, 
+                  padding: '40px 0', 
+                  borderTop: '1px solid #eee', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ 
+                    fontSize: '11px', 
+                    fontWeight: 700, 
+                    letterSpacing: '2px', 
+                    color: '#999', 
+                    textTransform: 'uppercase',
+                    marginBottom: 12
+                  }}>
+                    Manufacturer Performance Overview
+                  </div>
+                  <div style={{ fontSize: '32px', fontWeight: 300, color: totalManufacturerRejected > 0 ? '#ff4d4f' : '#43a047' }}>
+                    {totalManufacturerRejected}
+                  </div>
+                  <div style={{ fontSize: '14px', color: '#666', marginTop: 4 }}>
+                    Total Rejected Defaults across all productions
                   </div>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           ) : (
             <div className="empty-state">No articles found for this manufacturer in this production.</div>
           )}
