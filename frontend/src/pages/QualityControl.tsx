@@ -897,7 +897,7 @@ function QualityControl() {
                   }}>
                     Manufacturer Performance Overview
                   </div>
-                  <div style={{ fontSize: '32px', fontWeight: 300, color: totalManufacturerRejected > 0 ? '#ff4d4f' : '#43a047' }}>
+                  <div style={{ fontSize: '24px', fontWeight: 300, color: totalManufacturerRejected > 0 ? '#ff4d4f' : '#43a047' }}>
                     {totalManufacturerRejected}
                   </div>
                   <div style={{ fontSize: '14px', color: '#666', marginTop: 4 }}>
@@ -983,7 +983,7 @@ function QualityControl() {
                   }}>
                     Manufacturer Performance Overview
                   </div>
-                  <div style={{ fontSize: '32px', fontWeight: 300, color: totalManufacturerRejected > 0 ? '#ff4d4f' : '#43a047' }}>
+                  <div style={{ fontSize: '24px', fontWeight: 300, color: totalManufacturerRejected > 0 ? '#ff4d4f' : '#43a047' }}>
                     {totalManufacturerRejected}
                   </div>
                   <div style={{ fontSize: '14px', color: '#666', marginTop: 4 }}>
