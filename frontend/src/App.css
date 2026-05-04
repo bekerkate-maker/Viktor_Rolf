@@ -1510,6 +1510,11 @@
   margin-top: var(--spacing-xl);
 }
 
+.search-results a {
+  text-decoration: none !important;
+  color: inherit !important;
+}
+
 .search-results-section {
   margin-bottom: var(--spacing-2xl);
 }
@@ -1537,8 +1542,40 @@
 
 .search-results .samples-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: var(--spacing-lg);
+}
+
+.sample-card {
+  display: block;
+  padding: var(--spacing-lg);
+  background: var(--vr-white);
+  border: 1px solid var(--vr-border);
+  border-radius: 8px;
+  text-decoration: none !important;
+  color: var(--vr-black) !important;
+  transition: all var(--transition-speed);
+}
+
+.sample-card:hover {
+  border-color: var(--vr-gold);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.sample-card-code {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--vr-gray);
+  margin-bottom: 4px;
+}
+
+.sample-card-name {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--vr-black);
 }
 
 /* Photo Gallery */

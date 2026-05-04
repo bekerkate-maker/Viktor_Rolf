@@ -786,18 +786,8 @@ function QualityControl() {
                         to={`/samples/${sample.id}`}
                         className="sample-card"
                       >
-                        <div className="sample-card-header">
-                          <span className="sample-code">{sample.sample_code}</span>
-                          {sample.status !== 'Approved' && (
-                            <span className={`badge ${getStatusBadgeClass(sample.status)}`}>
-                              {sample.status}
-                            </span>
-                          )}
-                        </div>
+                        <div className="sample-card-code">{sample.sample_code}</div>
                         <div className="sample-card-name">{sample.name}</div>
-                        <div className="sample-card-meta">
-                          {sample.product_type}
-                        </div>
                       </Link>
                     ))}
                   </div>
