@@ -58,7 +58,7 @@ function SampleDetail() {
     fetchSiblings();
   }, [sample?.collection_id]);
 
-  const currentIndex = siblings.findIndex(s => s.id === id);
+  const currentIndex = siblings.findIndex(s => (s.id as any) == id);
   const prevSample = currentIndex > 0 ? siblings[currentIndex - 1] : null;
   const nextSample = currentIndex < siblings.length - 1 ? siblings[currentIndex + 1] : null;
   const [savingChecks, setSavingChecks] = useState(false);
@@ -617,20 +617,6 @@ function SampleDetail() {
   };
 
   // Update status
-  const handleStatusChange = async (newStatus: typeof STATUS_OPTIONS[number]) => {
-    if (!sample || !id) return;
-
-    try {
-      const statusValue = newStatus === 'None' ? null : newStatus;
-      await samplesAPI.update(id, { status: statusValue as any });
-      setSample({ ...sample, status: statusValue as any });
-      setShowStatusDropdown(false);
-    } catch (error: any) {
-      console.error('Error updating sample status:', error);
-      const msg = error?.response?.data?.error || error?.message || 'Failed to update status';
-      alert(`Failed to update status: ${msg}`);
-    }
-  };
 
   if (loading) {
     return <div className="loading luxury-font">Loading article...</div>;
@@ -1105,12 +1091,13 @@ function SampleDetail() {
 
         {/* Status Display (Non-interactive) */}
         <div style={{ position: 'relative' }}>
-          {sample.status && sample.status !== 'None' && getStatusBadge(sample.status)}
+          {(sample.status as any) && (sample.status as any) !== 'None' && getStatusBadge(sample.status)}
         </div>
       </div>
+    </div>
 
-      {/* Layout: Top section met fotos (links) en info (rechts) */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: '0 16px 48px 16px' }}>
+    {/* Layout: Top section met fotos (links) en info (rechts) */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: '0 16px 48px 16px' }}>
 
           {/* Print Only Header Display */}
           <div className="print-only style-header-content" style={{ display: 'none', marginBottom: '24px', width: '100%' }}>
@@ -1642,7 +1629,7 @@ function SampleDetail() {
                 e.stopPropagation();
                 handleSetMainPhoto(photos[lightboxIndex].id);
               }}
-              disabled={photos[lightboxIndex].is_main_photo}
+              disabled={!!photos[lightboxIndex].is_main_photo}
               style={{
                 display: 'flex',
                 alignItems: 'center',
