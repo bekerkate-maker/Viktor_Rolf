@@ -35,11 +35,32 @@ function SampleDetail() {
   const [showManufacturerDropdown, setShowManufacturerDropdown] = useState(false);
   const [manufacturersList, setManufacturersList] = useState<string[]>([]);
 
+  const [siblings, setSiblings] = useState<Sample[]>([]);
+
   useEffect(() => {
     manufacturersAPI.getAll().then(res => {
       setManufacturersList(res.data.map(m => m.name));
     }).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    const fetchSiblings = async () => {
+      if (sample && sample.collection_id) {
+        try {
+          const res = await samplesAPI.getByCollection(sample.collection_id);
+          // Sorting them to match the overview
+          setSiblings(res.data.sort((a, b) => a.sample_code.localeCompare(b.sample_code)));
+        } catch (error) {
+          console.error('Error fetching siblings:', error);
+        }
+      }
+    };
+    fetchSiblings();
+  }, [sample?.collection_id]);
+
+  const currentIndex = siblings.findIndex(s => s.id === id);
+  const prevSample = currentIndex > 0 ? siblings[currentIndex - 1] : null;
+  const nextSample = currentIndex < siblings.length - 1 ? siblings[currentIndex + 1] : null;
   const [savingChecks, setSavingChecks] = useState(false);
   const [hasSavedChecks, setHasSavedChecks] = useState(false);
   const [editModePrompt, setEditModePrompt] = useState(false);
@@ -1021,6 +1042,57 @@ function SampleDetail() {
           )}
         </div>
 
+        {/* Right side controls: Navigation and Status */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+          {/* Subtle Navigation Arrows */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff', padding: '6px 12px', borderRadius: 20, border: '1px solid #eee', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+            <button 
+              disabled={!prevSample}
+              onClick={() => prevSample && navigate(`/samples/${prevSample.id}${location.search}`)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: prevSample ? '#999' : '#eee',
+                cursor: prevSample ? 'pointer' : 'default',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'all 0.2s',
+                opacity: prevSample ? 1 : 0.3
+              }}
+              onMouseEnter={(e) => prevSample && (e.currentTarget.style.color = '#111')}
+              onMouseLeave={(e) => prevSample && (e.currentTarget.style.color = '#999')}
+              title={prevSample ? `Previous: ${prevSample.sample_code}` : 'No previous article'}
+            >
+              <ChevronLeft size={20} />
+            </button>
+            
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#bbb', letterSpacing: '0.5px', minWidth: 40, textAlign: 'center' }}>
+              {currentIndex !== -1 ? `${currentIndex + 1} / ${siblings.length}` : '—'}
+            </div>
+
+            <button 
+              disabled={!nextSample}
+              onClick={() => nextSample && navigate(`/samples/${nextSample.id}${location.search}`)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: nextSample ? '#999' : '#eee',
+                cursor: nextSample ? 'pointer' : 'default',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'all 0.2s',
+                opacity: nextSample ? 1 : 0.3
+              }}
+              onMouseEnter={(e) => nextSample && (e.currentTarget.style.color = '#111')}
+              onMouseLeave={(e) => nextSample && (e.currentTarget.style.color = '#999')}
+              title={nextSample ? `Next: ${nextSample.sample_code}` : 'No next article'}
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+
         {/* Clickable status dropdown */}
         <div style={{ position: 'relative' }}>
           <div
@@ -1079,6 +1151,7 @@ function SampleDetail() {
           )}
         </div>
       </div>
+    </div>
 
       {/* Layout: Top section met fotos (links) en info (rechts) */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: '0 16px 48px 16px' }}>
