@@ -1048,7 +1048,7 @@ function SampleDetail() {
           <div style={{ 
             position: 'absolute', 
             top: 22, 
-            right: 16, 
+            right: 12, 
             display: 'flex', 
             alignItems: 'center', 
             gap: 8, 
