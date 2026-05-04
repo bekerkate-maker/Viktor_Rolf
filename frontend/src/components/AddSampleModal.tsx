@@ -76,7 +76,7 @@ function AddSampleModal({ isOpen, onClose, collections, onSampleAdded }: AddSamp
         name: formData.name,
         product_type: formData.product_type,
         supplier_name: formData.supplier_name,
-        status: formData.status,
+        status: formData.status === 'None' ? null : formData.status,
         received_date: formData.received_date || null,
         feedback_deadline: formData.feedback_deadline || null,
         internal_notes: formData.internal_notes,

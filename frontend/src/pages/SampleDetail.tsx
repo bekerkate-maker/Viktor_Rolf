@@ -621,12 +621,14 @@ function SampleDetail() {
     if (!sample || !id) return;
 
     try {
-      await samplesAPI.update(id, { status: newStatus });
-      setSample({ ...sample, status: newStatus });
+      const statusValue = newStatus === 'None' ? null : newStatus;
+      await samplesAPI.update(id, { status: statusValue as any });
+      setSample({ ...sample, status: statusValue as any });
       setShowStatusDropdown(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating sample status:', error);
-      alert('Failed to update sample status');
+      const msg = error?.response?.data?.error || error?.message || 'Failed to update status';
+      alert(`Failed to update status: ${msg}`);
     }
   };
 
@@ -1108,7 +1110,7 @@ function SampleDetail() {
             style={{ cursor: 'pointer' }}
             title="Click to change status"
           >
-            {sample.status === 'None' ? (
+            {(!sample.status || sample.status === 'None') ? (
               <div style={{
                 padding: '6px 16px',
                 background: '#f9f9f9',

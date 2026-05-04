@@ -124,7 +124,7 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
         name: formData.name,
         product_type: formData.product_type,
         supplier_name: formData.supplier_name,
-        status: formData.status,
+        status: formData.status === 'None' ? null : formData.status,
         sample_code: generateSampleCode(),
         received_date: formData.received_date || undefined,
         feedback_deadline: formData.feedback_deadline || undefined,
