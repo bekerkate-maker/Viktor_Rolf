@@ -1131,17 +1131,65 @@ function QualityControl() {
                 <h3 style={{ fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px', color: '#999', marginBottom: 24 }}>
                   Latest Comments
                 </h3>
-                <div style={{ 
-                  padding: '24px', 
-                  background: '#f9f9f9', 
-                  borderRadius: '4px',
-                  fontStyle: 'italic',
-                  fontSize: '15px',
-                  lineHeight: '1.6',
-                  color: '#444'
-                }}>
-                  {selectedPreviewSample.latest_comment || 'No specific comments recorded for this article.'}
-                </div>
+                {(() => {
+                  let commentText = selectedPreviewSample.latest_comment;
+                  let commentDate = '';
+                  let commentAuthor = '';
+
+                  try {
+                    const parsed = JSON.parse(selectedPreviewSample.internal_notes || '{}');
+                    if (parsed && parsed._isJsonBlob && parsed.notes) {
+                      commentText = parsed.notes;
+                      commentDate = parsed.noteDate || '';
+                      commentAuthor = parsed.noteAuthor || '';
+                    }
+                  } catch (e) {}
+
+                  if (!commentText && !selectedPreviewSample.latest_comment) {
+                    return (
+                      <div style={{ 
+                        padding: '24px', 
+                        background: '#f9f9f9', 
+                        borderRadius: '4px',
+                        fontStyle: 'italic',
+                        fontSize: '15px',
+                        lineHeight: '1.6',
+                        color: '#999'
+                      }}>
+                        No specific comments recorded for this article.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div style={{ 
+                      padding: '24px', 
+                      background: '#f9f9f9', 
+                      borderRadius: '4px',
+                      fontSize: '15px',
+                      lineHeight: '1.6',
+                      color: '#444'
+                    }}>
+                      <div style={{ marginBottom: commentDate ? 12 : 0 }}>
+                        {commentText || selectedPreviewSample.latest_comment}
+                      </div>
+                      {commentDate && (
+                        <div style={{ 
+                          fontSize: '11px', 
+                          color: '#999', 
+                          fontWeight: 600, 
+                          textTransform: 'uppercase', 
+                          letterSpacing: '0.5px',
+                          marginTop: 16,
+                          borderTop: '1px solid #eee',
+                          paddingTop: 12
+                        }}>
+                          {commentAuthor && `${commentAuthor} • `}{commentDate}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 
                 <div style={{ marginTop: 32 }}>
                   <button 

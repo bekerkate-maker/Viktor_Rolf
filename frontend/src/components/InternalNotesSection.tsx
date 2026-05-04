@@ -12,27 +12,30 @@ interface NoteEntry {
   date: string;
 }
 
-const InternalNotesSection: React.FC<{ sample: Sample }> = ({ sample }) => {
-  // Parse possible JSON structure from internal_notes
-  let extractedNote = sample.internal_notes || '';
-  try {
-    const parsed = JSON.parse(sample.internal_notes || '{}');
-    if (parsed && typeof parsed === 'object' && parsed._isJsonBlob) {
-      extractedNote = parsed.notes || '';
-    }
-  } catch (e) {
-    // Normal text note
-  }
+  const [savedNote, setSavedNote] = useState<NoteEntry | null>(() => {
+    try {
+      const parsed = JSON.parse(sample.internal_notes || '{}');
+      if (parsed && typeof parsed === 'object' && parsed._isJsonBlob && parsed.notes) {
+        return {
+          text: parsed.notes,
+          author: parsed.noteAuthor || 'Sophie Laurent',
+          date: parsed.noteDate || ''
+        };
+      }
+      // Fallback for old simple text notes
+      if (sample.internal_notes && !sample.internal_notes.startsWith('{')) {
+        return {
+          text: sample.internal_notes,
+          author: 'Sophie Laurent',
+          date: ''
+        };
+      }
+    } catch (e) {}
+    return null;
+  });
 
-  const initialNote = extractedNote ? {
-    text: extractedNote,
-    author: CURRENT_USER,
-    date: new Date().toLocaleString('nl-NL', { dateStyle: 'short', timeStyle: 'short' }),
-  } : null;
-
-  const [savedNote, setSavedNote] = useState<NoteEntry | null>(initialNote);
-  const [noteText, setNoteText] = useState(initialNote ? initialNote.text : '');
-  const [isEditing, setIsEditing] = useState(!initialNote);
+  const [noteText, setNoteText] = useState(savedNote ? savedNote.text : '');
+  const [isEditing, setIsEditing] = useState(!savedNote);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -40,18 +43,41 @@ const InternalNotesSection: React.FC<{ sample: Sample }> = ({ sample }) => {
     setSaving(true);
 
     try {
-      // Haal evt. de bestaande checklist op tegelijk
-      let finalNotes = noteText;
+      const now = new Date().toLocaleString('nl-NL', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+      
+      let finalNotes = '';
       try {
         const parsed = JSON.parse(sample.internal_notes || '{}');
         if (parsed && typeof parsed === 'object' && parsed._isJsonBlob) {
           parsed.notes = noteText;
+          parsed.noteAuthor = CURRENT_USER;
+          parsed.noteDate = now;
           finalNotes = JSON.stringify(parsed);
         } else {
-          finalNotes = JSON.stringify({ _isJsonBlob: true, notes: noteText, fitChecks: {}, workChecks: {} });
+          finalNotes = JSON.stringify({ 
+            _isJsonBlob: true, 
+            notes: noteText, 
+            noteAuthor: CURRENT_USER,
+            noteDate: now,
+            fitChecks: {}, 
+            workChecks: {} 
+          });
         }
       } catch (e) {
-        finalNotes = JSON.stringify({ _isJsonBlob: true, notes: noteText, fitChecks: {}, workChecks: {} });
+        finalNotes = JSON.stringify({ 
+          _isJsonBlob: true, 
+          notes: noteText, 
+          noteAuthor: CURRENT_USER,
+          noteDate: now,
+          fitChecks: {}, 
+          workChecks: {} 
+        });
       }
 
       await samplesAPI.update(String(sample.id), {
@@ -61,7 +87,7 @@ const InternalNotesSection: React.FC<{ sample: Sample }> = ({ sample }) => {
       const newEntry: NoteEntry = {
         text: noteText,
         author: CURRENT_USER,
-        date: new Date().toLocaleString('nl-NL', { dateStyle: 'short', timeStyle: 'short' }),
+        date: now,
       };
 
       setSavedNote(newEntry);
