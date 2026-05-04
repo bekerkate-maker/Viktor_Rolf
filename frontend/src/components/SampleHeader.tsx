@@ -7,19 +7,19 @@ interface SampleHeaderProps {
 }
 
 export const getStatusBadge = (status: string) => {
-  let color = '#888', bg = '#f5f5f5', dot = '#bbb', label = status;
+  let color = '#111', bg = '#f8f8f8', dot = '#111', label = status;
   switch (status) {
     case 'Approved':
-      color = '#1a7f37'; bg = '#eafbe7'; dot = '#1a7f37'; label = 'Approved'; break;
+      color = '#065f46'; bg = '#f0fdf4'; dot = '#065f46'; break;
     case 'Rejected':
-      color = '#d92d20'; bg = '#fbeaea'; dot = '#d92d20'; label = 'Rejected'; break;
+      color = '#991b1b'; bg = '#fef2f2'; dot = '#991b1b'; break;
     case 'Changes Needed':
-      color = '#b68400'; bg = '#fffbe6'; dot = '#b68400'; label = 'Changes Needed'; break;
+      color = '#b45309'; bg = '#fffbeb'; dot = '#b45309'; break;
     case 'None':
       return null;
     case 'In Review':
     default:
-      color = '#2563eb'; bg = '#eaf0fb'; dot = '#2563eb'; label = 'In Review'; break;
+      color = '#111'; bg = '#f5f5f5'; dot = '#111'; label = 'In Review'; break;
   }
   return (
     <span style={{
@@ -28,17 +28,24 @@ export const getStatusBadge = (status: string) => {
       background: bg,
       color,
       fontWeight: 700,
-      fontSize: 18,
-      borderRadius: 22,
-      padding: '6px 22px 6px 12px',
-      letterSpacing: 0.8,
-      boxShadow: '0 2px 8px 0 rgba(37,99,235,0.08)',
+      fontSize: 13,
+      borderRadius: 4,
+      padding: '6px 12px',
+      letterSpacing: '1px',
+      textTransform: 'uppercase',
       marginRight: 10,
-      gap: 10,
-      border: `1.5px solid ${color}`,
-      transition: 'box-shadow 0.2s',
+      gap: 8,
+      border: `1px solid ${color}20`,
+      transition: 'all 0.2s',
     }}>
-      {status !== 'Approved' && <span style={{width: 12, height: 12, borderRadius: '50%', background: dot, display: 'inline-block', marginRight: 10, boxShadow: `0 0 0 2px ${bg}`}}></span>}
+      <span style={{
+        width: 8, 
+        height: 8, 
+        borderRadius: '50%', 
+        background: dot, 
+        display: 'inline-block',
+        boxShadow: `0 0 0 2px ${bg}`
+      }}></span>
       {label}
     </span>
   );
