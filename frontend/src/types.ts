@@ -1,7 +1,7 @@
 // Type definitions for Viktor & Rolf QC System
 
 export interface User {
-  id: number;
+  id: string | number;
   name: string;
   email: string;
   role: 'viewer' | 'editor' | 'admin';
@@ -9,7 +9,7 @@ export interface User {
 }
 
 export interface Collection {
-  id: number;
+  id: string | number;
   name: string;
   season: string;
   year: number;
@@ -26,14 +26,14 @@ export interface Collection {
 }
 
 export interface Sample {
-  id: number;
-  collection_id: number;
+  id: string | number;
+  collection_id: string | number;
   sample_code: string;
   name: string;
   product_type: 'Jacket' | 'Dress' | 'Pants' | 'Corset' | 'Knit' | 'Shirt' | 'Coat' | 'Skirt' | 'Top' | 'Other';
   supplier_name: string;
   status: 'In Review' | 'Changes Needed' | 'Approved' | 'Rejected';
-  responsible_user_id: number;
+  responsible_user_id: string | number;
   received_date?: string;
   feedback_deadline?: string;
   internal_notes?: string;
@@ -60,21 +60,21 @@ export interface Sample {
 }
 
 export interface SamplePhoto {
-  id: number;
-  sample_id: number;
+  id: string | number;
+  sample_id: string | number;
   file_path: string;
   file_name: string;
   photo_type: 'Front' | 'Back' | 'Detail' | 'Issue' | 'Other';
-  quality_review_id?: number;
-  is_main_photo: number;
+  quality_review_id?: string | number;
+  is_main_photo: boolean | number;
   display_order: number;
   uploaded_at: string;
 }
 
 export interface QualityReview {
-  id: number;
-  sample_id: number;
-  reviewer_id: number;
+  id: string | number;
+  sample_id: string | number;
+  reviewer_id: string | number;
   review_date: string;
   quality_category: 'Construction' | 'Fit' | 'Fabric' | 'Finish' | 'Measurement';
   issue_description: string;
@@ -93,17 +93,17 @@ export interface QualityReview {
 }
 
 export interface QualityReviewPhoto {
-  id: number;
-  quality_review_id: number;
+  id: string | number;
+  quality_review_id: string | number;
   file_path: string;
   file_name: string;
   uploaded_at: string;
 }
 
 export interface QualityReviewComment {
-  id: number;
-  quality_review_id: number;
-  user_id: number;
+  id: string | number;
+  quality_review_id: string | number;
+  user_id: string | number;
   comment: string;
   created_at: string;
   user_name?: string;
@@ -115,11 +115,11 @@ export interface QualityReviewComment {
 
 
 export interface AuditTrailEntry {
-  id: number;
+  id: string | number;
   entity_type: string;
-  entity_id: number;
+  entity_id: string | number;
   action: string;
-  user_id: number;
+  user_id: string | number;
   changes: string;
   created_at: string;
   user_name?: string;
@@ -142,7 +142,6 @@ export interface DashboardStats {
     pending: number;
     high_severity: number;
   };
-
 }
 
 export interface QualityReviewStats {
@@ -155,11 +154,9 @@ export interface QualityReviewStats {
   low_severity: number;
 }
 
-
-
 export interface SupplierCommunication {
-  id: number;
-  sample_id: number;
+  id: string | number;
+  sample_id: string | number;
   supplier_name: string;
   communication_date: string;
   communication_type: 'Email' | 'Call' | 'Meeting';
@@ -168,7 +165,7 @@ export interface SupplierCommunication {
   feedback_due_date?: string;
   status: 'Waiting for Supplier' | 'Waiting for Internal Feedback' | 'Completed';
   is_important: boolean;
-  created_by: number;
+  created_by: string | number;
   created_at: string;
   updated_at: string;
   sample_code?: string;

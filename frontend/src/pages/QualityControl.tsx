@@ -92,7 +92,7 @@ function QualityControl() {
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [showAllSamples, setShowAllSamples] = useState(false);
   const [isEditingYears, setIsEditingYears] = useState(false);
-  const [selectedSampleIds, setSelectedSampleIds] = useState<number[]>([]);
+  const [selectedSampleIds, setSelectedSampleIds] = useState<(string | number)[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [printSamples, setPrintSamples] = useState<Sample[]>([]);
   const [showManufacturersModal, setShowManufacturersModal] = useState(false);
@@ -555,7 +555,7 @@ function QualityControl() {
     }
   };
 
-  const handleSelectSample = (e: React.ChangeEvent<HTMLInputElement>, id: number) => {
+  const handleSelectSample = (e: React.ChangeEvent<HTMLInputElement>, id: string | number) => {
     if (e.target.checked) {
       setSelectedSampleIds(prev => [...prev, id]);
     } else {

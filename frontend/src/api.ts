@@ -69,42 +69,42 @@ api.interceptors.response.use(
 // Collections
 export const collectionsAPI = {
   getAll: () => api.get<Collection[]>('/collections'),
-  getById: (id: string) => api.get<Collection>(`/collections/${id}`),
+  getById: (id: string | number) => api.get<Collection>(`/collections/${id}`),
   create: (data: Partial<Collection>) => api.post<Collection>('/collections', data),
-  update: (id: string, data: Partial<Collection>) => api.put<Collection>(`/collections/${id}`, data),
-  delete: (id: string) => api.delete(`/collections/${id}`),
+  update: (id: string | number, data: Partial<Collection>) => api.put<Collection>(`/collections/${id}`, data),
+  delete: (id: string | number) => api.delete(`/collections/${id}`),
 };
 
 // Samples
 export const samplesAPI = {
-  getAll: (params?: { collection_id?: string; status?: string }) =>
+  getAll: (params?: { collection_id?: string | number; status?: string }) =>
     api.get<Sample[]>('/samples', { params }),
-  getByCollection: (collectionId: string) =>
+  getByCollection: (collectionId: string | number) =>
     api.get<Sample[]>(`/samples?collection_id=${collectionId}`),
-  getById: (id: string) => api.get<Sample>(`/samples/${id}`),
+  getById: (id: string | number) => api.get<Sample>(`/samples/${id}`),
   create: (data: Partial<Sample>) => api.post<Sample>('/samples', data),
-  update: (id: string, data: Partial<Sample>) => api.put<Sample>(`/samples/${id}`, data),
-  delete: (id: string) => api.delete(`/samples/${id}`),
-  getAuditTrail: (id: string) => api.get(`/samples/${id}/audit-trail`),
+  update: (id: string | number, data: Partial<Sample>) => api.put<Sample>(`/samples/${id}`, data),
+  delete: (id: string | number) => api.delete(`/samples/${id}`),
+  getAuditTrail: (id: string | number) => api.get(`/samples/${id}/audit-trail`),
 };
 
 // Quality Reviews
 export const qualityReviewsAPI = {
-  getAll: (params?: { sample_id?: number; status?: string; severity?: string }) =>
+  getAll: (params?: { sample_id?: string | number; status?: string; severity?: string }) =>
     api.get<QualityReview[]>('/quality-reviews', { params }),
-  getById: (id: number) => api.get<QualityReview>(`/quality-reviews/${id}`),
+  getById: (id: string | number) => api.get<QualityReview>(`/quality-reviews/${id}`),
   create: (data: Partial<QualityReview>) => api.post<QualityReview>('/quality-reviews', data),
-  update: (id: number, data: Partial<QualityReview>) =>
+  update: (id: string | number, data: Partial<QualityReview>) =>
     api.put<QualityReview>(`/quality-reviews/${id}`, data),
-  delete: (id: number) => api.delete(`/quality-reviews/${id}`),
-  uploadPhotos: (id: number, files: File[]) => {
+  delete: (id: string | number) => api.delete(`/quality-reviews/${id}`),
+  uploadPhotos: (id: string | number, files: File[]) => {
     const formData = new FormData();
     files.forEach((file) => formData.append('photos', file));
     return api.post(`/quality-reviews/${id}/photos`, formData);
   },
-  deletePhoto: (reviewId: number, photoId: number) =>
+  deletePhoto: (reviewId: string | number, photoId: string | number) =>
     api.delete(`/quality-reviews/${reviewId}/photos/${photoId}`),
-  addComment: (id: number, data: { user_id: number; comment: string }) =>
+  addComment: (id: string | number, data: { user_id: string | number; comment: string }) =>
     api.post(`/quality-reviews/${id}/comments`, data),
   getStats: () => api.get<QualityReviewStats>('/quality-reviews/stats/overview'),
 };
@@ -122,20 +122,20 @@ export const usersAPI = {
 
 // Sample Photos
 export const photosAPI = {
-  uploadPhotos: async (sampleId: string, files: File[]) => {
+  uploadPhotos: async (sampleId: string | number, files: File[]) => {
     const formData = new FormData();
     files.forEach((file) => formData.append('photos', file));
     // Gebruik de standaard 'api' instance zodat de interceptors hun werk doen
     return api.post(`/photos/samples/${sampleId}`, formData);
   },
-  getPhotos: (sampleId: string) => api.get(`/photos/samples/${sampleId}`),
-  setMainPhoto: async (photoId: number) => {
+  getPhotos: (sampleId: string | number) => api.get(`/photos/samples/${sampleId}`),
+  setMainPhoto: async (photoId: string | number) => {
     return api.put(`/photos/${photoId}/set-main`, {});
   },
-  updateOrder: async (photoId: number, display_order: number) => {
+  updateOrder: async (photoId: string | number, display_order: number) => {
     return api.put(`/photos/${photoId}/order`, { display_order });
   },
-  deletePhoto: async (photoId: number) => {
+  deletePhoto: async (photoId: string | number) => {
     return api.delete(`/photos/${photoId}`);
   },
 };

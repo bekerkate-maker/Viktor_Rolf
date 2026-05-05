@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import html2pdf from 'html2pdf.js';
 import InternalNotesSection from '../components/InternalNotesSection';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { samplesAPI, photosAPI, manufacturersAPI } from '../api';
@@ -8,7 +9,6 @@ import EditSampleModal from '../components/EditSampleModal';
 // Voeg Lucide icons toe voor buttons
 import { Plus, X, ChevronLeft, ChevronRight, Trash2, Pencil, Check, Minus, Download, Scissors, Ruler, ClipboardCheck, Save, EyeOff, Eye, Activity, RefreshCw, Tag, Calendar, Factory, User, AlignLeft } from 'lucide-react';
 
-const STATUS_OPTIONS = ['None', 'In Review', 'Changes Needed', 'Approved', 'Rejected'] as const;
 
 function SampleDetail() {
   const params = useParams<{ id: string; collectionId?: string }>();
@@ -31,7 +31,8 @@ function SampleDetail() {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedName, setEditedName] = useState('');
   const [editedSampleCode, setEditedSampleCode] = useState('');
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [editingField, setEditingField] = useState<'name' | 'code' | null>(null);
+  const [showPDFPreview, setShowPDFPreview] = useState(false);
   const [showManufacturerDropdown, setShowManufacturerDropdown] = useState(false);
   const [manufacturersList, setManufacturersList] = useState<string[]>([]);
 
@@ -47,7 +48,7 @@ function SampleDetail() {
     const fetchSiblings = async () => {
       if (sample && sample.collection_id) {
         try {
-          const res = await samplesAPI.getByCollection(sample.collection_id);
+          const res = await samplesAPI.getByCollection(String(sample.collection_id));
           // Sorting them to match the overview
           setSiblings(res.data.sort((a, b) => a.sample_code.localeCompare(b.sample_code)));
         } catch (error) {
@@ -64,7 +65,6 @@ function SampleDetail() {
   const [savingChecks, setSavingChecks] = useState(false);
   const [hasSavedChecks, setHasSavedChecks] = useState(false);
   const [editModePrompt, setEditModePrompt] = useState(false);
-  const [editingField, setEditingField] = useState<'name' | 'code' | null>(null);
 
   const [fitChecks, setFitChecks] = useState<Record<string, 'reject' | 'doubt' | 'approve'>>({});
   const [workChecks, setWorkChecks] = useState<Record<string, 'reject' | 'doubt' | 'approve'>>({});
@@ -536,7 +536,7 @@ function SampleDetail() {
     }
   };
 
-  const handleDeletePhoto = async (photoId: number) => {
+  const handleDeletePhoto = async (photoId: string | number) => {
     if (!window.confirm('Are you sure you want to delete this photo?')) return;
 
     try {
@@ -554,7 +554,7 @@ function SampleDetail() {
     }
   };
 
-  const handleSetMainPhoto = async (photoId: number) => {
+  const handleSetMainPhoto = async (photoId: string | number) => {
     try {
       await photosAPI.setMainPhoto(photoId);
       if (id) await loadPhotos(id);
@@ -565,8 +565,35 @@ function SampleDetail() {
   };
 
   const handleDownloadPDF = () => {
-    // Trigger printing dialog
-    window.print();
+    setShowPDFPreview(true);
+  };
+
+  const handleFinalDownload = () => {
+    // Target the actual sheet inside the modal
+    const element = document.querySelector('.pdf-preview-modal .print-page') as HTMLElement;
+    if (!element) {
+      alert('Could not find print content');
+      return;
+    }
+
+    const opt = {
+      margin:       0,
+      filename:     `QC_Report_${sample?.sample_code || 'Article'}.pdf`,
+      image:        { type: 'jpeg' as const, quality: 0.98 },
+      html2canvas:  { 
+        scale: 2, 
+        useCORS: true, 
+        logging: false,
+        letterRendering: true,
+        backgroundColor: '#ffffff'
+      },
+      jsPDF:        { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
+    };
+
+    // Use html2pdf
+    html2pdf().set(opt).from(element).save().finally(() => {
+      setShowPDFPreview(false);
+    });
   };
 
   // Start editing title
@@ -625,11 +652,234 @@ function SampleDetail() {
     return <div className="empty-state luxury-font">Article not found.</div>;
   }
 
-  // Nieuwe layout
+  const renderPDFContent = () => {
+    if (!sample) return null;
+    return (
+      <div className="print-page">
+        {/* HEADER BRANDING */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', fontSize: '10px', fontWeight: 600, borderBottom: '1px solid #eee', paddingBottom: '5px' }}>
+          <span>Viktor & Rolf | Quality Control System</span>
+          <span>{new Date().toLocaleDateString('nl-NL')} {new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+
+        {/* TOP ROW */}
+        <div className="print-top-row">
+          <div className="print-photo-container">
+            {photos.length > 0 ? (
+              <img src={photos.find(p => p.is_main_photo)?.file_path || photos[0].file_path} alt="Article" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <div style={{ fontSize: '10px', color: '#ccc', textAlign: 'center' }}>NO PHOTO</div>
+            )}
+          </div>
+          <div className="print-info-container">
+            <div className="print-info-item" style={{ marginBottom: '10px' }}>
+              <span className="print-info-label" style={{ fontWeight: 600 }}>Article Identification: </span>
+              <span style={{ fontWeight: 800, fontSize: '16px' }}>{sample.sample_code}</span>
+            </div>
+            <div className="print-info-item" style={{ marginBottom: '6px' }}>
+              <span className="print-info-label" style={{ fontWeight: 600 }}>Article Name: </span>
+              <span>{sample.name}</span>
+            </div>
+            <div className="print-info-item" style={{ marginBottom: '6px' }}>
+              <span className="print-info-label" style={{ fontWeight: 600 }}>Category: </span>
+              <span>{sample.product_type}</span>
+            </div>
+            <div className="print-info-item" style={{ marginBottom: '6px' }}>
+              <span className="print-info-label" style={{ fontWeight: 600 }}>Season: </span>
+              <span>{sample.season} {sample.year}</span>
+            </div>
+            <div className="print-info-item" style={{ marginBottom: '6px' }}>
+              <span className="print-info-label" style={{ fontWeight: 600 }}>Manufacturer: </span>
+              <span style={{ fontWeight: 800 }}>{sample.supplier_name || 'N/A'}</span>
+            </div>
+            <div className="print-info-item">
+              <span className="print-info-label" style={{ fontWeight: 600 }}>Style Note: </span>
+              <span>{sample.tags || '—'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* MIDDLE ROW */}
+        <div className="print-middle-row">
+          {/* Fit Results */}
+          <div className="print-column">
+            <div className="print-column-title">Fit Assessment</div>
+            <div className="print-assessment-list">
+              {Object.keys(fitChecks).map(key => {
+                const value = fitChecks[key];
+                if (value === 'approve' || !value) return null;
+                const label = value === 'reject' ? 'Rejected' : value === 'doubt' ? 'Review' : String(value);
+                return (
+                  <div key={key} className="print-assessment-item" style={{ marginBottom: '10px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
+                    <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }}>
+                      {label}
+                    </span>
+                    <span className="print-assessment-name" style={{ fontWeight: '500' }}>{key}</span>
+                    {fitComments[key] && (
+                      <span className="print-assessment-comment" style={{ display: 'block', fontStyle: 'italic', fontSize: '10px', marginTop: '2px', color: '#666' }}>{fitComments[key]}</span>
+                    )}
+                  </div>
+                );
+              })}
+              {Object.keys(fitChecks).filter(k => fitChecks[k] && fitChecks[k] !== 'approve').length === 0 && (
+                <p style={{ textAlign: 'center', opacity: 0.5, marginTop: 40, fontSize: '12px' }}>No issues reported.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Manufacturer Results */}
+          <div className="print-column">
+            <div className="print-column-title">Workmanship Assessment</div>
+            <div className="print-assessment-list">
+              {Object.entries(workChecks).map(([key, value]) => {
+                if (value === 'approve' || !value) return null;
+                const label = value === 'reject' ? 'Rejected' : value === 'doubt' ? 'Review' : String(value);
+                return (
+                  <div key={key} className="print-assessment-item" style={{ marginBottom: '10px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
+                    <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }}>
+                      {label}
+                    </span>
+                    <span className="print-assessment-name" style={{ fontWeight: '500' }}>{key}</span>
+                    {workComments[key] && (
+                      <span className="print-assessment-comment" style={{ display: 'block', fontStyle: 'italic', fontSize: '10px', marginTop: '2px', color: '#666' }}>{workComments[key]}</span>
+                    )}
+                  </div>
+                );
+              })}
+              {Object.keys(workChecks).filter(k => workChecks[k] && workChecks[k] !== 'approve').length === 0 && (
+                <p style={{ textAlign: 'center', opacity: 0.5, marginTop: 40, fontSize: '12px' }}>No issues reported.</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* BOTTOM ROW - Internal Notes */}
+        <div className="print-notes-container">
+          <div style={{ fontWeight: '900', textTransform: 'uppercase', fontSize: '12px', marginBottom: '8px', borderBottom: '1px solid #111', paddingBottom: '4px' }}>
+            Internal Notes & Final Remarks
+          </div>
+          <div style={{ fontSize: '11px', lineHeight: '1.5' }}>
+            {(sample.internal_notes && sample.internal_notes.includes('_isJsonBlob')) 
+              ? JSON.parse(sample.internal_notes).notes 
+              : sample.internal_notes || 'No final remarks.'}
+          </div>
+        </div>
+
+        {/* FOOTER - Thank You */}
+        <div className="print-footer-container">
+          <div style={{ fontWeight: '900', fontSize: '20px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '2px' }}>Thank You</div>
+          <div style={{ fontSize: '11px', color: '#111', maxWidth: '650px', margin: '0 auto', lineHeight: '1.4' }}>
+            We kindly ask you to review these quality control notes and apply the necessary adjustments for the next sample round
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (loading) {
+    return <div className="loading luxury-font">Loading article...</div>;
+  }
   return (
     <>
       <style>{`
-        .print-only-container { display: none; }
+        /* PDF Shared Styles (Preview & Print) */
+        .print-page { 
+          padding: 10mm; 
+          height: 297mm; 
+          width: 210mm;
+          display: flex;
+          flex-direction: column;
+          color: #111;
+          box-sizing: border-box;
+          overflow: hidden;
+          background: #fff;
+          font-family: 'Inter', sans-serif !important;
+          position: relative;
+        }
+
+        .print-top-row {
+          display: flex;
+          gap: 12px;
+          height: 220px;
+          margin-bottom: 12px;
+          width: 100%;
+        }
+
+        .print-photo-container {
+          width: 170px;
+          height: 220px;
+          border: 1.5px solid #000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          background: #fff;
+        }
+
+        .print-info-container {
+          flex: 1;
+          border: 1.5px solid #000;
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          font-size: 13px;
+        }
+
+        .print-middle-row {
+          display: flex;
+          gap: 12px;
+          flex: 1;
+          margin-bottom: 12px;
+          min-height: 0;
+          width: 100%;
+        }
+
+        .print-column {
+          flex: 1;
+          border: 1.5px solid #000;
+          padding: 15px;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        .print-column-title {
+          font-weight: 800;
+          text-transform: uppercase;
+          font-size: 15px;
+          border-bottom: 1.5px solid #000;
+          padding-bottom: 10px;
+          margin-bottom: 15px;
+          text-align: center;
+          letter-spacing: 1px;
+        }
+
+        .print-assessment-list {
+          font-size: 11px;
+          flex: 1;
+          overflow: hidden;
+        }
+
+        .print-notes-container {
+          height: 110px; 
+          border: 1.5px solid #000;
+          padding: 15px;
+          margin-bottom: 12px;
+          width: 100%;
+        }
+
+        .print-footer-container {
+          height: 80px;
+          border: 1.5px solid #000;
+          padding: 15px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          text-align: center;
+          width: 100%;
+        }
+
         @media print {
           body { background: white !important; font-family: 'Inter', sans-serif !important; }
           @page {
@@ -654,96 +904,6 @@ function SampleDetail() {
             background: none !important;
           }
           .print-only-container { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
-          
-          .print-page { 
-            page-break-after: always; 
-            padding: 15mm; 
-            height: 297mm; 
-            width: 210mm;
-            display: flex;
-            flex-direction: column;
-            color: #111;
-            box-sizing: border-box;
-            overflow: hidden; /* Strict one-page */
-          }
-
-          .print-top-row {
-            display: flex;
-            gap: 15px;
-            height: 240px; /* Adjusted to fix overlap */
-            margin-bottom: 20px;
-          }
-
-          .print-photo-container {
-            width: 180px; /* Bigger */
-            height: 240px; /* Taller */
-            border: 1px solid #111;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            background: #fff;
-          }
-
-          .print-info-container {
-            flex: 1;
-            border: 1px solid #111;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            font-size: 13px;
-          }
-
-          .print-middle-row {
-            display: flex;
-            gap: 15px;
-            flex: 1;
-            margin-bottom: 20px;
-            min-height: 0;
-          }
-
-          .print-column {
-            flex: 1;
-            border: 1px solid #111;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-          }
-
-          .print-column-title {
-            font-weight: 900;
-            text-transform: uppercase;
-            font-size: 14px;
-            border-bottom: 2px solid #111;
-            padding-bottom: 8px;
-            margin-bottom: 15px;
-            text-align: center;
-          }
-
-          .print-assessment-list {
-            font-size: 11px;
-            flex: 1;
-            overflow: hidden;
-          }
-
-          .print-notes-container {
-            height: 120px; 
-            border: 1px solid #111;
-            padding: 15px;
-            margin-bottom: 15px;
-          }
-
-          .print-footer-container {
-            height: 90px;
-            border: 1px solid #111;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            text-align: center;
-          }
         }
       `}</style>
       <div className="no-print">
@@ -1732,121 +1892,98 @@ function SampleDetail() {
         </div>
       </div>
 
-      {/* Unified Print Layout Container (Hidden in browser) */}
-      <div className="print-only-container">
-        <div key={sample.id} className="print-page">
-          {/* TOP ROW */}
-          <div className="print-top-row">
-            <div className="print-photo-container">
-              {photos.length > 0 ? (
-                <img src={photos.find(p => p.is_main_photo)?.file_path || photos[0].file_path} alt="Article" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <span style={{ fontSize: '10px', color: '#ccc' }}>FOTO</span>
-              )}
+      {/* PDF Download Preview Modal */}
+      {showPDFPreview && sample && (
+        <div className="pdf-preview-modal" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.9)',
+          zIndex: 9999,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          padding: '40px 20px',
+          overflowY: 'auto',
+          backdropFilter: 'blur(10px)'
+        }}>
+          {/* Preview Header */}
+          <div style={{
+            width: '100%',
+            maxWidth: '900px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 24,
+            position: 'sticky',
+            top: 0,
+            background: 'rgba(0,0,0,0.5)',
+            padding: '16px 24px',
+            borderRadius: 12,
+            zIndex: 10,
+            backdropFilter: 'blur(5px)'
+          }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 300, color: '#fff', letterSpacing: '1px' }}>PDF EXPORT PREVIEW</h2>
+              <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#aaa', textTransform: 'uppercase', letterSpacing: '2px' }}>{sample.sample_code} · {sample.name}</p>
             </div>
-            <div className="print-info-container">
-              <div className="print-info-item">
-                <span className="print-info-label">Article Identification: </span>
-                <span style={{ fontWeight: 800, fontSize: '16px' }}>{sample.sample_code}</span>
-              </div>
-              <div className="print-info-item">
-                <span className="print-info-label">Article Name: </span>
-                <span>{sample.name}</span>
-              </div>
-              <div className="print-info-item">
-                <span className="print-info-label">Category: </span>
-                <span>{sample.product_type}</span>
-              </div>
-              <div className="print-info-item">
-                <span className="print-info-label">Season: </span>
-                <span>{sample.season} {sample.year}</span>
-              </div>
-              <div className="print-info-item">
-                <span className="print-info-label">Manufacturer: </span>
-                <span style={{ fontWeight: 600 }}>{sample.supplier_name || 'N/A'}</span>
-              </div>
-              <div className="print-info-item">
-                <span className="print-info-label">Style Note: </span>
-                <span>{sample.tags || '—'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* MIDDLE ROW */}
-          <div className="print-middle-row">
-            {/* Fit Results */}
-            <div className="print-column">
-              <div className="print-column-title">Fit Assessment</div>
-              <div className="print-assessment-list">
-                {Object.keys(fitChecks).map(key => {
-                  const value = fitChecks[key];
-                  if (value === 'approve' || !value) return null;
-                  const label = value === 'reject' ? 'Rejected' : value === 'doubt' ? 'Review' : String(value);
-                  return (
-                    <div key={key} className="print-assessment-item" style={{ marginBottom: '8px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
-                      <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold' }}>
-                        {label}
-                      </span>
-                      <span className="print-assessment-name" style={{ fontWeight: '500' }}>{key}</span>
-                      {fitComments[key] && (
-                        <span className="print-assessment-comment" style={{ display: 'block', fontStyle: 'italic', fontSize: '10px', marginTop: '2px' }}>{fitComments[key]}</span>
-                      )}
-                    </div>
-                  );
-                })}
-                {Object.keys(fitChecks).filter(k => fitChecks[k] && fitChecks[k] !== 'approve').length === 0 && (
-                  <p style={{ textAlign: 'center', opacity: 0.5, marginTop: 20 }}>No issues reported.</p>
-                )}
-              </div>
-            </div>
-
-            {/* Manufacturer Results */}
-            <div className="print-column">
-              <div className="print-column-title">Workmanship Assessment</div>
-              <div className="print-assessment-list">
-                {Object.entries(workChecks).map(([key, value]) => {
-                  if (value === 'approve' || !value) return null;
-                  const label = value === 'reject' ? 'Rejected' : value === 'doubt' ? 'Review' : String(value);
-                  return (
-                    <div key={key} className="print-assessment-item" style={{ marginBottom: '8px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
-                      <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold' }}>
-                        {label}
-                      </span>
-                      <span className="print-assessment-name" style={{ fontWeight: '500' }}>{key}</span>
-                      {workComments[key] && (
-                        <span className="print-assessment-comment" style={{ display: 'block', fontStyle: 'italic', fontSize: '10px', marginTop: '2px' }}>{workComments[key]}</span>
-                      )}
-                    </div>
-                  );
-                })}
-                {Object.keys(workChecks).filter(k => workChecks[k] && workChecks[k] !== 'approve').length === 0 && (
-                  <p style={{ textAlign: 'center', opacity: 0.5, marginTop: 20 }}>No issues reported.</p>
-                )}
-              </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button 
+                onClick={() => setShowPDFPreview(false)}
+                style={{ 
+                  background: 'transparent', 
+                  border: '1px solid #444', 
+                  color: '#fff', 
+                  padding: '10px 20px', 
+                  borderRadius: 8, 
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleFinalDownload}
+                style={{ 
+                  background: '#fff', 
+                  border: 'none', 
+                  color: '#111', 
+                  padding: '10px 28px', 
+                  borderRadius: 8, 
+                  cursor: 'pointer', 
+                  fontWeight: 700, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 10,
+                  fontSize: 13,
+                  boxShadow: '0 4px 20px rgba(255,255,255,0.2)',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <Download size={18} /> Confirm & Download
+              </button>
             </div>
           </div>
 
-          {/* BOTTOM ROW - Internal Notes */}
-          <div className="print-notes-container">
-            <div style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: '12px', marginBottom: '8px', borderBottom: '1px solid #ddd', paddingBottom: '4px' }}>
-              Internal Notes & Final Remarks
-            </div>
-            <div style={{ fontSize: '11px', lineHeight: '1.4' }}>
-              {(sample.internal_notes && sample.internal_notes.includes('_isJsonBlob')) 
-                ? JSON.parse(sample.internal_notes).notes 
-                : sample.internal_notes || 'No final remarks.'}
-            </div>
-          </div>
-
-          {/* FOOTER - Thank You */}
-          <div className="print-footer-container" style={{ borderTop: '1px solid #111', background: '#fafafa' }}>
-            <div style={{ fontWeight: 'bold', fontSize: '18px', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>Thank You</div>
-            <div style={{ fontSize: '10px', color: '#333', maxWidth: '500px', margin: '0 auto', lineHeight: '1.5' }}>
-              We kindly ask you to review these quality control notes and apply the necessary adjustments for the next sample round. Best regards, Viktor & Rolf.
-            </div>
+          {/* Paper Preview Container */}
+          <div style={{
+            transform: 'scale(0.85)',
+            transformOrigin: 'top center',
+            marginBottom: 100,
+            boxShadow: '0 30px 60px rgba(0,0,0,0.5)',
+          }}>
+            {renderPDFContent()}
           </div>
         </div>
-      </div>
+      )}
     </>
   );
 }
