@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
-import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Collections from './pages/Collections';
@@ -21,7 +20,6 @@ function App() {
         <Route path="/register" element={<Register />} />
 
         {/* Protected routes - with layout */}
-        <Route path="/home" element={<Layout><Home /></Layout>} />
         <Route path="/collections" element={<Layout><Collections /></Layout>} />
         <Route path="/collections/:id" element={<Layout><CollectionDetail /></Layout>} />
         <Route path="/samples/:id" element={<Layout><SampleDetail /></Layout>} />

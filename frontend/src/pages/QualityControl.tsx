@@ -5,7 +5,7 @@ import type { Collection, Sample } from '../types';
 import AddSampleModal from '../components/AddSampleModal';
 import EditSampleModal from '../components/EditSampleModal';
 import ManufacturersModal from '../components/ManufacturersModal';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Download } from 'lucide-react';
 
 type Category = 'Mariage' | 'Eyewear Collection' | 'Ready to Wear';
 
@@ -93,6 +93,7 @@ function QualityControl() {
   const [showAllSamples, setShowAllSamples] = useState(false);
   const [isEditingYears, setIsEditingYears] = useState(false);
   const [selectedSampleIds, setSelectedSampleIds] = useState<(string | number)[]>([]);
+  const [isSelectMode, setIsSelectMode] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [printSamples, setPrintSamples] = useState<Sample[]>([]);
   const [showManufacturersModal, setShowManufacturersModal] = useState(false);
@@ -566,7 +567,6 @@ function QualityControl() {
   const handleExportExcel = () => {
     if (samples.length === 0) return;
 
-    // Create HTML Table Content for pseudo-XLS
     const headers = [
       'Article Code', 
       'Name', 
@@ -577,7 +577,18 @@ function QualityControl() {
       'Rejected Workmanship Items'
     ];
 
-    const tableRows = samples.map(s => {
+    const escapeCSV = (str: any) => {
+      if (str === null || str === undefined) return '';
+      const stringified = String(str);
+      if (stringified.includes(',') || stringified.includes('"') || stringified.includes('\n')) {
+        return `"${stringified.replace(/"/g, '""')}"`;
+      }
+      return stringified;
+    };
+
+    const csvHeaders = headers.map(escapeCSV).join(',');
+
+    const csvRows = samples.map(s => {
       let rejectedFit = '';
       let rejectedWork = '';
       
@@ -597,58 +608,24 @@ function QualityControl() {
         } catch (e) {}
       }
 
-      return `
-        <tr>
-          <td>${s.sample_code}</td>
-          <td>${s.name}</td>
-          <td>${s.status}</td>
-          <td>${s.latest_comment || ''}</td>
-          <td>${s.responsible_user_name || ''}</td>
-          <td>${rejectedFit}</td>
-          <td>${rejectedWork}</td>
-        </tr>
-      `;
-    }).join('');
+      return [
+        s.sample_code,
+        s.name,
+        s.status,
+        s.latest_comment,
+        s.responsible_user_name,
+        rejectedFit,
+        rejectedWork
+      ].map(escapeCSV).join(',');
+    }).join('\n');
 
-    const htmlContent = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-      <head>
-        <meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8">
-        <!--[if gte mso 9]>
-        <xml>
-          <x:ExcelWorkbook>
-            <x:ExcelWorksheets>
-              <x:ExcelWorksheet>
-                <x:Name>${selectedManufacturer || 'Export'}</x:Name>
-                <x:WorksheetOptions>
-                  <x:DisplayGridlines/>
-                </x:WorksheetOptions>
-              </x:ExcelWorksheet>
-            </x:ExcelWorksheets>
-          </x:ExcelWorkbook>
-        </xml>
-        <![endif]-->
-      </head>
-      <body>
-        <table>
-          <thead>
-            <tr>
-              ${headers.map(h => `<th style="background-color: #f2f2f2; border: 1px solid #ddd; font-weight: bold;">${h}</th>`).join('')}
-            </tr>
-          </thead>
-          <tbody>
-            ${tableRows}
-          </tbody>
-        </table>
-      </body>
-      </html>
-    `;
+    const csvContent = `${csvHeaders}\n${csvRows}`;
 
-    const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel' });
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `${selectedManufacturer}_${collections[0]?.name || 'export'}.xls`);
+    link.setAttribute('download', `${selectedManufacturer}_${collections[0]?.name || 'export'}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -1683,15 +1660,33 @@ function QualityControl() {
           </div>
           {samples.length > 0 ? (
             <div className="samples-table" style={{ border: '1px solid #eee', borderRadius: '8px', overflow: 'hidden', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-              <div className="samples-table-header" style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 1fr) minmax(80px, 1fr) minmax(140px, 1.5fr) minmax(180px, 2fr) minmax(180px, 2fr) minmax(100px, 1fr) minmax(140px, 1.5fr) minmax(80px, 1fr)', gap: '16px', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #eee', background: '#fff', borderRadius: '8px 8px 0 0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 600, color: '#666' }}>
-                  <input
-                    type="checkbox"
-                    checked={samples.filter(s => manufacturerFilter === 'All' || s.supplier_name === manufacturerFilter).length > 0 && selectedSampleIds.length === samples.filter(s => manufacturerFilter === 'All' || s.supplier_name === manufacturerFilter).length}
-                    onChange={() => handleSelectAll(samples.filter(s => manufacturerFilter === 'All' || s.supplier_name === manufacturerFilter))}
-                    style={{ cursor: 'pointer', width: 16, height: 16, margin: 0 }}
-                  />
-                  PDF
+              <div className="samples-table-header" style={{ display: 'grid', gridTemplateColumns: '50px minmax(80px, 1fr) minmax(140px, 1.5fr) minmax(180px, 2fr) minmax(180px, 2fr) minmax(100px, 1fr) minmax(140px, 1.5fr) minmax(80px, 1fr)', gap: '16px', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #eee', background: '#fff', borderRadius: '8px 8px 0 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {!isSelectMode ? (
+                    <button
+                      onClick={() => setIsSelectMode(true)}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', color: '#666', padding: '4px' }}
+                      title="Select for PDF Export"
+                    >
+                      <Download size={18} />
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700, color: '#111', background: '#e0e0e0', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ccc', width: 'fit-content' }}>
+                      <input
+                        type="checkbox"
+                        checked={samples.filter(s => manufacturerFilter === 'All' || s.supplier_name === manufacturerFilter).length > 0 && selectedSampleIds.length === samples.filter(s => manufacturerFilter === 'All' || s.supplier_name === manufacturerFilter).length}
+                        onChange={() => handleSelectAll(samples.filter(s => manufacturerFilter === 'All' || s.supplier_name === manufacturerFilter))}
+                        style={{ cursor: 'pointer', width: 14, height: 14, margin: 0 }}
+                      />
+                      <button 
+                        onClick={() => { setIsSelectMode(false); setSelectedSampleIds([]); }}
+                        style={{ background: 'none', border: 'none', marginLeft: 0, cursor: 'pointer', color: '#666', padding: 0, display: 'flex', alignItems: 'center' }}
+                        title="Cancel Selection"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div style={{ fontSize: '12px', fontWeight: 600, color: '#666' }}>Photo</div>
                 <div style={{ fontSize: '12px', fontWeight: 600, color: '#666' }}>Art. Code</div>
@@ -1707,14 +1702,21 @@ function QualityControl() {
                 samples
                   .filter(sample => manufacturerFilter === 'All' || sample.supplier_name === manufacturerFilter)
                   .map((sample) => (
-                    <div key={sample.id} className="samples-table-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 1fr) minmax(80px, 1fr) minmax(140px, 1.5fr) minmax(180px, 2fr) minmax(180px, 2fr) minmax(100px, 1fr) minmax(140px, 1.5fr) minmax(80px, 1fr)', gap: '16px', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #eee', transition: 'background 0.2s' }}>
+                    <div key={sample.id} className="samples-table-row" style={{ display: 'grid', gridTemplateColumns: '50px minmax(80px, 1fr) minmax(140px, 1.5fr) minmax(180px, 2fr) minmax(180px, 2fr) minmax(100px, 1fr) minmax(140px, 1.5fr) minmax(80px, 1fr)', gap: '16px', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #eee', transition: 'background 0.2s' }}>
                       <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedSampleIds.includes(sample.id)}
-                          onChange={(e) => handleSelectSample(e, sample.id)}
-                          style={{ cursor: 'pointer', width: 16, height: 16, margin: 0 }}
-                        />
+                        {isSelectMode ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', cursor: 'pointer' }} onClick={() => handleSelectSample({ target: { checked: !selectedSampleIds.includes(sample.id) } } as any, sample.id)} title="Select this item for PDF Export">
+                            <input
+                              type="checkbox"
+                              checked={selectedSampleIds.includes(sample.id)}
+                              onChange={(e) => { e.stopPropagation(); handleSelectSample(e, sample.id); }}
+                              style={{ cursor: 'pointer', width: 16, height: 16, margin: 0, accentColor: '#111' }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                        ) : (
+                          <div style={{ width: '24px' }} />
+                        )}
                       </div>
                       
                       <Link to={`/samples/${sample.id}?fromCategory=${selectedCategory}&fromYear=${selectedYear}&fromSeason=${selectedSeason}`} style={{ display: 'contents', color: 'inherit', textDecoration: 'none' }}>
@@ -1776,7 +1778,7 @@ function QualityControl() {
             </div>
           ) : (
             <div className="samples-table" style={{ border: '1px solid #eee', borderRadius: '8px', overflow: 'hidden', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-              <div className="samples-table-header" style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 1fr) minmax(80px, 1fr) minmax(140px, 1.5fr) minmax(180px, 2fr) minmax(180px, 2fr) minmax(100px, 1fr) minmax(140px, 1.5fr) minmax(80px, 1fr)', gap: '16px', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #eee', background: '#fff', borderRadius: '8px 8px 0 0' }}>
+              <div className="samples-table-header" style={{ display: 'grid', gridTemplateColumns: '50px minmax(80px, 1fr) minmax(140px, 1.5fr) minmax(180px, 2fr) minmax(180px, 2fr) minmax(100px, 1fr) minmax(140px, 1.5fr) minmax(80px, 1fr)', gap: '16px', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #eee', background: '#fff', borderRadius: '8px 8px 0 0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 600, color: '#666' }}>PDF</div>
                 <div style={{ fontSize: '12px', fontWeight: 600, color: '#666' }}>Photo</div>
                 <div style={{ fontSize: '12px', fontWeight: 600, color: '#666' }}>Art. Code</div>

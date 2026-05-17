@@ -59,7 +59,7 @@ function Layout({ children }: LayoutProps) {
     <div className="app-container">
       <nav className="top-nav">
         <div className="nav-brand">
-          <Link to="/home" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <Link to="/quality-control" style={{ textDecoration: 'none', color: 'inherit' }}>
             <div>
               <h1>VIKTOR & ROLF</h1>
               <div className="nav-brand-subtitle">Quality Control System</div>

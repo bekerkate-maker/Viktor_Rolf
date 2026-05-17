@@ -917,12 +917,14 @@
 /* Category Grid */
 .category-grid {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--spacing-lg);
   margin-top: var(--spacing-xl);
 }
 
 .category-card {
   flex: 1;
+  min-width: 300px;
   background: var(--vr-white);
   border: 1px solid var(--vr-border);
   padding: var(--spacing-2xl);
@@ -966,6 +968,7 @@
 /* Category Card Wrapper voor Ready to Wear met foto's */
 .category-card-wrapper {
   flex: 1;
+  min-width: 300px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -984,7 +987,7 @@
 .category-card-wrapper .category-card {
   border: none;
   box-shadow: none;
-  flex: none;
+  flex: 1;
 }
 
 .category-card-wrapper .category-card:hover {

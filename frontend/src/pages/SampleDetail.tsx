@@ -66,6 +66,10 @@ function SampleDetail() {
   const [hasSavedChecks, setHasSavedChecks] = useState(false);
   const [editModePrompt, setEditModePrompt] = useState(false);
 
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [savedStateString, setSavedStateString] = useState<string>('');
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+
   const [fitChecks, setFitChecks] = useState<Record<string, 'reject' | 'doubt' | 'approve'>>({});
   const [workChecks, setWorkChecks] = useState<Record<string, 'reject' | 'doubt' | 'approve'>>({});
   const [fitComments, setFitComments] = useState<Record<string, string>>({});
@@ -147,8 +151,10 @@ function SampleDetail() {
     }
   ]);
 
-  const [selectedFitCategory, setSelectedFitCategory] = useState('Tops, Jackets & Dresses');
-  const [selectedWorkCategory, setSelectedWorkCategory] = useState('Workmanship Details');
+  const [selectedFitCategory, setSelectedFitCategory] = useState('');
+  const [selectedWorkCategory, setSelectedWorkCategory] = useState('');
+  const [addingCustomFit, setAddingCustomFit] = useState(false);
+  const [addingCustomWork, setAddingCustomWork] = useState(false);
 
   const [draggedItemInfo, setDraggedItemInfo] = useState<{ sectionIndex: number, itemIndex: number, type: 'fit' | 'work' } | null>(null);
 
@@ -179,6 +185,8 @@ function SampleDetail() {
 
   const renderChecklist = (title: string, sections: { name: string, items: string[] }[], setStateSections: any, state: any, setState: any, comments: Record<string, string>, setComments: any, Icon: any, newItemText: string, setNewItemText: any, hiddenItems: string[], setHiddenItems: any, showHidden: boolean, setShowHidden: any, selectedCategory: string, setSelectedCategory: any) => {
     const type = title.toLowerCase() === 'fit' ? 'fit' : 'work';
+    const isAddingCustom = type === 'fit' ? addingCustomFit : addingCustomWork;
+    const setIsAddingCustom = type === 'fit' ? setAddingCustomFit : setAddingCustomWork;
     const allDefaultItems = sections.reduce((acc, s) => [...acc, ...s.items], [] as string[]);
     const customItems = Object.keys(state).filter(k => !allDefaultItems.includes(k));
     const allItems = [...allDefaultItems, ...customItems];
@@ -208,17 +216,22 @@ function SampleDetail() {
         <div style={{ minWidth: 0, fontWeight: 500, fontSize: 15, display: 'flex', flexDirection: 'column', color: showHidden ? '#888' : '#111' }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             {!showHidden && (
-              <button
+              <div
                 className="no-print"
-                onClick={() => setActiveCommentItem(activeCommentItem?.item === item && activeCommentItem?.type === type ? null : { type, item })}
-                style={{ marginRight: 8, background: 'none', border: 'none', color: comments[item] ? '#111' : '#ccc', cursor: 'pointer', padding: 2, display: 'flex', transition: 'color 0.2s' }}
-                title="Add comment"
+                style={{ marginRight: 8, color: comments[item] ? '#111' : '#ccc', cursor: 'grab', padding: 2, display: 'flex', transition: 'color 0.2s' }}
+                title="Drag to reorder"
               >
                 <AlignLeft size={14} />
-              </button>
+              </div>
             )}
             
-            <span style={{ textDecoration: showHidden ? 'line-through' : 'none', opacity: showHidden ? 0.6 : 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item}</span>
+            <span 
+              onClick={() => !showHidden && setActiveCommentItem(activeCommentItem?.item === item && activeCommentItem?.type === type ? null : { type, item })}
+              style={{ textDecoration: showHidden ? 'line-through' : 'none', opacity: showHidden ? 0.6 : 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: !showHidden ? 'pointer' : 'default' }}
+              title={!showHidden ? "Click to add/edit comment" : ""}
+            >
+              {item}
+            </span>
             <span className="print-only print-status-marker" style={{ display: 'none' }}>
               {state[item] === 'approve' && <span className="status-approve">Approved</span>}
               {state[item] === 'doubt' && <span className="status-doubt">Review</span>}
@@ -400,68 +413,113 @@ function SampleDetail() {
 
         {!showHidden && (
           <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 'auto', paddingTop: 16, borderTop: '1px dashed #eee' }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <select 
-                value={selectedCategory} 
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                style={{ padding: '8px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13, background: '#fff' }}
-              >
-                {sections.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
-                <option value="Additional Items">Additional Items</option>
-              </select>
-              <input
-                type="text"
-                placeholder={`Add custom ${title.toLowerCase()} item...`}
-                value={newItemText}
-                onChange={(e) => setNewItemText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newItemText.trim() && !allItems.includes(newItemText.trim())) {
-                    const item = newItemText.trim();
-                    setState({ ...state, [item]: 'approve' });
-                    
-                    if (selectedCategory !== 'Additional Items') {
-                      const newSections = [...sections];
-                      const sIdx = newSections.findIndex(s => s.name === selectedCategory);
-                      if (sIdx > -1) {
-                        newSections[sIdx] = { ...newSections[sIdx], items: [...newSections[sIdx].items, item] };
-                        setStateSections(newSections);
-                      }
-                    }
-                    setNewItemText('');
-                  }
+            {!isAddingCustom ? (
+              <button
+                onClick={() => setIsAddingCustom(true)}
+                style={{ width: '100%', padding: '10px', background: '#f9f9f9', color: '#666', borderRadius: 8, border: '1px solid #eee', cursor: 'pointer', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.2s' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f0f0f0';
+                  e.currentTarget.style.borderColor = '#ddd';
                 }}
-                style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: '1px solid #ddd', fontSize: 14 }}
-              />
-            </div>
-            <button
-              onClick={() => {
-                if (newItemText.trim() && !allItems.includes(newItemText.trim())) {
-                  const item = newItemText.trim();
-                  setState({ ...state, [item]: 'approve' });
-                  
-                  if (selectedCategory !== 'Additional Items') {
-                    const newSections = [...sections];
-                    const sIdx = newSections.findIndex(s => s.name === selectedCategory);
-                    if (sIdx > -1) {
-                      newSections[sIdx] = { ...newSections[sIdx], items: [...newSections[sIdx].items, item] };
-                      setStateSections(newSections);
-                    }
-                  }
-                  setNewItemText('');
-                }
-              }}
-              style={{ width: '100%', padding: '10px', background: '#f9f9f9', color: '#666', borderRadius: 8, border: '1px solid #eee', cursor: 'pointer', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.2s' }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#f0f0f0';
-                e.currentTarget.style.borderColor = '#ddd';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#f9f9f9';
-                e.currentTarget.style.borderColor = '#eee';
-              }}
-            >
-              <Plus size={16} /> Add to {selectedCategory}
-            </button>
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#f9f9f9';
+                  e.currentTarget.style.borderColor = '#eee';
+                }}
+              >
+                <Plus size={16} /> Add Custom Item
+              </button>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
+                  <select 
+                    value={selectedCategory} 
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1px solid #111', fontSize: 13, background: '#fff', fontWeight: 500 }}
+                  >
+                    <option value="" disabled>First, select a category...</option>
+                    {sections.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+                    <option value="Additional Items">Additional Items</option>
+                  </select>
+                  {!selectedCategory && (
+                    <button
+                      onClick={() => {
+                        setIsAddingCustom(false);
+                        setNewItemText('');
+                        setSelectedCategory('');
+                      }}
+                      style={{ padding: '10px 14px', background: 'transparent', color: '#666', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+                
+                {selectedCategory && (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                    <input
+                      type="text"
+                      placeholder={`Add item to ${selectedCategory}...`}
+                      value={newItemText}
+                      onChange={(e) => setNewItemText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newItemText.trim() && !allItems.includes(newItemText.trim())) {
+                          const item = newItemText.trim();
+                          setState({ ...state, [item]: 'approve' });
+                          
+                          if (selectedCategory !== 'Additional Items') {
+                            const newSections = [...sections];
+                            const sIdx = newSections.findIndex(s => s.name === selectedCategory);
+                            if (sIdx > -1) {
+                              newSections[sIdx] = { ...newSections[sIdx], items: [...newSections[sIdx].items, item] };
+                              setStateSections(newSections);
+                            }
+                          }
+                          setNewItemText('');
+                          setIsAddingCustom(false);
+                          setSelectedCategory('');
+                        }
+                      }}
+                      style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: '1px solid #ddd', fontSize: 14 }}
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => {
+                        if (newItemText.trim() && !allItems.includes(newItemText.trim())) {
+                          const item = newItemText.trim();
+                          setState({ ...state, [item]: 'approve' });
+                          
+                          if (selectedCategory !== 'Additional Items') {
+                            const newSections = [...sections];
+                            const sIdx = newSections.findIndex(s => s.name === selectedCategory);
+                            if (sIdx > -1) {
+                              newSections[sIdx] = { ...newSections[sIdx], items: [...newSections[sIdx].items, item] };
+                              setStateSections(newSections);
+                            }
+                          }
+                          setNewItemText('');
+                          setIsAddingCustom(false);
+                          setSelectedCategory('');
+                        }
+                      }}
+                      disabled={!newItemText.trim()}
+                      style={{ padding: '0 16px', background: newItemText.trim() ? '#111' : '#f0f0f0', color: newItemText.trim() ? '#fff' : '#999', borderRadius: 8, border: 'none', cursor: newItemText.trim() ? 'pointer' : 'not-allowed', fontWeight: 600 }}
+                    >
+                      Add
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsAddingCustom(false);
+                        setNewItemText('');
+                        setSelectedCategory('');
+                      }}
+                      style={{ padding: '0 12px', background: 'transparent', color: '#666', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -489,22 +547,63 @@ function SampleDetail() {
 
   // Load data immediately when sample arrives
   useEffect(() => {
-    if (sample && sample.internal_notes) {
-      try {
-        const parsed = JSON.parse(sample.internal_notes);
-        if (parsed && typeof parsed === 'object' && parsed._isJsonBlob) {
-          setFitChecks(parsed.fitChecks || {});
-          setWorkChecks(parsed.workChecks || {});
-          setFitComments(parsed.fitComments || {});
-          setWorkComments(parsed.workComments || {});
-          setHiddenFitItems(parsed.hiddenFitItems || []);
-          setHiddenWorkItems(parsed.hiddenWorkItems || []);
-        }
-      } catch (e) {
-        // Plain text fallback, nothing to parse into checklists
+    if (sample) {
+      if (sample.updated_at) {
+        setLastSavedAt(sample.updated_at);
       }
+      
+      let stateToSave = {
+        fitChecks: {},
+        workChecks: {},
+        fitComments: {},
+        workComments: {},
+        hiddenFitItems: [],
+        hiddenWorkItems: []
+      };
+
+      if (sample.internal_notes) {
+        try {
+          const parsed = JSON.parse(sample.internal_notes);
+          if (parsed && typeof parsed === 'object' && parsed._isJsonBlob) {
+            stateToSave = {
+              fitChecks: parsed.fitChecks || {},
+              workChecks: parsed.workChecks || {},
+              fitComments: parsed.fitComments || {},
+              workComments: parsed.workComments || {},
+              hiddenFitItems: parsed.hiddenFitItems || [],
+              hiddenWorkItems: parsed.hiddenWorkItems || []
+            };
+          }
+        } catch (e) {
+          // Plain text fallback, nothing to parse into checklists
+        }
+      }
+
+      setFitChecks(stateToSave.fitChecks as any);
+      setWorkChecks(stateToSave.workChecks as any);
+      setFitComments(stateToSave.fitComments);
+      setWorkComments(stateToSave.workComments);
+      setHiddenFitItems(stateToSave.hiddenFitItems);
+      setHiddenWorkItems(stateToSave.hiddenWorkItems);
+      
+      setSavedStateString(JSON.stringify(stateToSave));
+      setHasUnsavedChanges(false);
     }
   }, [sample]);
+
+  // Watch for changes
+  useEffect(() => {
+    if (!savedStateString) return;
+    const currentStateString = JSON.stringify({
+      fitChecks,
+      workChecks,
+      fitComments,
+      workComments,
+      hiddenFitItems,
+      hiddenWorkItems
+    });
+    setHasUnsavedChanges(currentStateString !== savedStateString);
+  }, [fitChecks, workChecks, fitComments, workComments, hiddenFitItems, hiddenWorkItems, savedStateString]);
 
   const loadPhotos = async (sampleId: string) => {
     try {
@@ -1572,9 +1671,21 @@ function SampleDetail() {
           </div>
 
           {/* Kleine Save Assessment knop rechts onder de checklist */}
-          <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
+          <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+            {lastSavedAt && (
+              <div style={{ fontSize: 11, color: '#999', fontStyle: 'italic' }}>
+                Last saved: {new Date(lastSavedAt).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </div>
+            )}
+            {hasUnsavedChanges && !savingChecks && !hasSavedChecks && (
+              <div style={{ fontSize: 12, color: '#f57c00', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#f57c00' }} />
+                Unsaved changes
+              </div>
+            )}
             <button
               onClick={async () => {
+                if (!hasUnsavedChanges && lastSavedAt) return;
                 setSavingChecks(true);
                 try {
                   let parsed = { _isJsonBlob: true, notes: '', fitChecks: {}, workChecks: {}, fitComments: {}, workComments: {}, hiddenFitItems: [], hiddenWorkItems: [] };
@@ -1596,48 +1707,61 @@ function SampleDetail() {
                   parsed.hiddenFitItems = hiddenFitItems as any;
                   parsed.hiddenWorkItems = hiddenWorkItems as any;
 
+                  const now = new Date().toISOString();
                   await samplesAPI.update(String(sample?.id), {
-                    internal_notes: JSON.stringify(parsed)
+                    internal_notes: JSON.stringify(parsed),
+                    updated_at: now
                   });
 
                   setSavingChecks(false);
                   setHasSavedChecks(true);
+                  setHasUnsavedChanges(false);
+                  setSavedStateString(JSON.stringify({
+                    fitChecks,
+                    workChecks,
+                    fitComments,
+                    workComments,
+                    hiddenFitItems,
+                    hiddenWorkItems
+                  }));
+                  setLastSavedAt(now);
+                  
                   setTimeout(() => setHasSavedChecks(false), 3000);
                 } catch (err) {
                   setSavingChecks(false);
                   alert('Oeps, kon checks niet opslaan.');
                 }
               }}
-              disabled={savingChecks}
+              disabled={savingChecks || (!hasUnsavedChanges && !!lastSavedAt && !hasSavedChecks)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
                 padding: '8px 16px',
                 borderRadius: 8,
-                background: hasSavedChecks ? '#4CAF50' : '#111',
+                background: hasSavedChecks ? '#4CAF50' : hasUnsavedChanges ? '#f57c00' : '#111',
                 color: '#fff',
                 border: 'none',
-                cursor: savingChecks ? 'not-allowed' : 'pointer',
+                cursor: savingChecks || (!hasUnsavedChanges && !!lastSavedAt && !hasSavedChecks) ? 'not-allowed' : 'pointer',
                 fontSize: 13,
                 fontWeight: 600,
                 transition: 'all 0.2s',
-                opacity: savingChecks ? 0.7 : 1,
+                opacity: savingChecks || (!hasUnsavedChanges && !!lastSavedAt && !hasSavedChecks) ? 0.5 : 1,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
               }}
               onMouseEnter={(e) => {
                 if (!savingChecks && !hasSavedChecks) {
-                  e.currentTarget.style.background = '#333';
+                  e.currentTarget.style.background = hasUnsavedChanges ? '#e65100' : '#333';
                 }
               }}
               onMouseLeave={(e) => {
                 if (!savingChecks && !hasSavedChecks) {
-                  e.currentTarget.style.background = '#111';
+                  e.currentTarget.style.background = hasUnsavedChanges ? '#f57c00' : '#111';
                 }
               }}
             >
               {hasSavedChecks ? <Check size={14} /> : savingChecks ? <RefreshCw className="animate-spin" size={14} /> : <Save size={14} />}
-              {savingChecks ? 'Saving...' : hasSavedChecks ? 'Assessment Saved' : 'Save Assessment'}
+              {savingChecks ? 'Saving...' : hasSavedChecks ? 'Assessment Saved' : hasUnsavedChanges ? 'Save Changes' : (lastSavedAt ? 'Saved' : 'Save Assessment')}
             </button>
           </div>
 
@@ -1894,7 +2018,7 @@ function SampleDetail() {
 
       {/* PDF Download Preview Modal */}
       {showPDFPreview && sample && (
-        <div className="pdf-preview-modal" style={{
+        <div className="pdf-preview-modal" onClick={() => setShowPDFPreview(false)} style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -1910,7 +2034,7 @@ function SampleDetail() {
           backdropFilter: 'blur(10px)'
         }}>
           {/* Preview Header */}
-          <div style={{
+          <div onClick={(e) => e.stopPropagation()} style={{
             width: '100%',
             maxWidth: '900px',
             display: 'flex',
@@ -1974,7 +2098,7 @@ function SampleDetail() {
           </div>
 
           {/* Paper Preview Container */}
-          <div style={{
+          <div onClick={(e) => e.stopPropagation()} style={{
             transform: 'scale(0.85)',
             transformOrigin: 'top center',
             marginBottom: 100,
