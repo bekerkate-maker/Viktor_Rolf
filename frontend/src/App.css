@@ -2039,3 +2039,191 @@
     print-color-adjust: exact !important;
   }
 }
+/* ====== GLOBAL MOBILE RESPONSIVENESS ====== */
+@media (max-width: 768px) {
+  /* Fix layout padding */
+  .main-layout {
+    padding: 16px !important;
+  }
+
+  /* Make header stack vertically if needed */
+  .page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 16px;
+  }
+  
+  .page-header .action-buttons {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  /* Category, Year, Season buttons wrappers */
+  .category-selection,
+  .year-selection,
+  .season-selection {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  /* Make filter buttons smaller on mobile */
+  .category-selection button,
+  .year-selection button,
+  .season-selection button {
+    font-size: 12px !important;
+    padding: 8px 16px !important;
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  /* Tables container scrolling */
+  .samples-view {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  /* Ensure table isn't squished */
+  .samples-table {
+    min-width: 800px;
+  }
+
+  /* Fix grid in SampleDetail (2 columns -> 1 column) */
+  .print-top-section {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Reduce padding on assessment wrapper for mobile */
+  .assessment-wrapper {
+    padding: 16px !important;
+  }
+  
+  /* Reduce padding on style information box */
+  .print-style-info-box {
+    padding: 16px !important;
+  }
+  
+  /* Manufacturer overview collections grid */
+  .collections-list {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Fix the back button */
+  .back-arrow-button {
+    position: static !important;
+    margin-bottom: 16px !important;
+  }
+  
+  /* Modal responsive */
+  .modal-content {
+    width: 95% !important;
+    max-height: 90vh !important;
+    padding: 16px !important;
+  }
+
+  /* Sample title fonts */
+  .sample-detail-name {
+    font-size: 11px !important;
+  }
+  .sample-detail-code {
+    font-size: 28px !important;
+  }
+  
+  /* Make the checklist grid fit side-by-side */
+  .assessment-checklists-container {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .assessment-checklists-container > div {
+    min-width: 0 !important;
+  }
+  /* Make checklist rows fit in half the screen */
+  .assessment-checklist-row {
+    grid-template-columns: minmax(0, 1fr) 28px 28px 28px 20px !important;
+    gap: 4px !important;
+    padding: 8px 0 !important;
+  }
+  
+  /* Shrink the checklist buttons */
+  .assessment-checklist-row > div:nth-child(2),
+  .assessment-checklist-row > div:nth-child(3),
+  .assessment-checklist-row > div:nth-child(4) {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 4px !important;
+  }
+  
+  /* Shrink SVG icons inside the buttons */
+  .assessment-checklist-row svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+  
+  /* Shrink text size for checklist items */
+  .assessment-checklist-row > div:first-child {
+    font-size: 10px !important;
+  }
+  
+  /* Smaller assessment headers */
+  .assessment-header h2 {
+    font-size: 18px !important;
+  }
+  .assessment-header p {
+    font-size: 12px !important;
+  }
+  
+  /* Replace text with icons on checklist headers */
+  .assessment-checklist-header-row > div:nth-child(2),
+  .assessment-checklist-header-row > div:nth-child(3),
+  .assessment-checklist-header-row > div:nth-child(4) {
+    color: transparent !important;
+    position: relative;
+    overflow: hidden;
+  }
+  .assessment-checklist-header-row > div:nth-child(2)::after {
+    content: '✕'; color: #e53935; position: absolute; left: 0; right: 0; text-align: center; font-size: 14px; line-height: 1;
+  }
+  .assessment-checklist-header-row > div:nth-child(3)::after {
+    content: '-'; color: #ffb300; position: absolute; left: 0; right: 0; text-align: center; font-size: 16px; line-height: 1;
+  }
+  .assessment-checklist-header-row > div:nth-child(4)::after {
+    content: '✓'; color: #43a047; position: absolute; left: 0; right: 0; text-align: center; font-size: 14px; line-height: 1;
+  }
+  
+  /* Reduce padding on checklist cards */
+  .assessment-checklist-card {
+    padding: 8px !important;
+  }
+  
+  .luxury-card-title {
+    font-size: 12px !important;
+  }
+  
+  /* Top Nav shrinking */
+  .nav-brand h1 {
+    font-size: 13px !important;
+    letter-spacing: 0.05em !important;
+  }
+  .user-name-display {
+    font-size: 9px !important;
+  }
+  .user-job-title {
+    display: none !important;
+  }
+  
+  /* Fix see hidden items button */
+  .assessment-checklist-card > div:first-child {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .assessment-checklist-card button {
+    font-size: 9px !important;
+    padding: 2px 4px !important;
+  }
+  
+  .checklist-section-title {
+    font-size: 10px !important;
+    letter-spacing: 0.5px !important;
+  }
+}

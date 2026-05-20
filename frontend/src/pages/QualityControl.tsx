@@ -82,7 +82,7 @@ function QualityControl() {
     fetchCollectionsCached().catch(console.error);
   }, []);
 
-  const [searchResults, setSearchResults] = useState<{ collections: Collection[], samples: Sample[] }>({ collections: [], samples: [] });
+  const [searchResults, setSearchResults] = useState<{ collections: Collection[], samples: Sample[], manufacturers: string[] }>({ collections: [], samples: [], manufacturers: [] });
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedSample, setSelectedSample] = useState<Sample | null>(null);
@@ -448,7 +448,7 @@ function QualityControl() {
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
     if (query.trim().length < 2) {
-      setSearchResults({ collections: [], samples: [] });
+      setSearchResults({ collections: [], samples: [], manufacturers: [] });
       return;
     }
 
@@ -468,7 +468,11 @@ function QualityControl() {
         sample.sample_code.toLowerCase().includes(query.toLowerCase())
       );
 
-      setSearchResults({ collections: filteredCollections, samples: filteredSamples });
+      const filteredManufacturers = manufacturers.filter((m: string) =>
+        m.toLowerCase().includes(query.toLowerCase())
+      );
+
+      setSearchResults({ collections: filteredCollections, samples: filteredSamples, manufacturers: filteredManufacturers });
       setLoading(false);
     } catch (error) {
       console.error('Search error:', error);
@@ -478,7 +482,7 @@ function QualityControl() {
 
   const clearSearch = () => {
     setSearchQuery('');
-    setSearchResults({ collections: [], samples: [] });
+    setSearchResults({ collections: [], samples: [], manufacturers: [] });
   };
 
   const handleDeleteSample = async (e: React.MouseEvent, sample: Sample) => {
@@ -739,7 +743,7 @@ function QualityControl() {
             <input
               type="text"
               className="search-input"
-              placeholder="Search collections or styles..."
+              placeholder="Search collections, styles or manufacturers..."
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
             />
@@ -749,12 +753,36 @@ function QualityControl() {
           </div>
 
           {/* Search Results */}
-          {searchQuery && searchResults.collections.length === 0 && searchResults.samples.length === 0 && !loading && (
+          {searchQuery && searchResults.collections.length === 0 && searchResults.samples.length === 0 && searchResults.manufacturers.length === 0 && !loading && (
             <div className="search-empty">No results found for "{searchQuery}"</div>
           )}
 
-          {searchQuery && (searchResults.collections.length > 0 || searchResults.samples.length > 0) && (
+          {searchQuery && (searchResults.collections.length > 0 || searchResults.samples.length > 0 || searchResults.manufacturers.length > 0) && (
             <div className="search-results">
+              {searchResults.manufacturers.length > 0 && (
+                <div className="search-results-section">
+                  <h3 className="search-results-title">Manufacturers ({searchResults.manufacturers.length})</h3>
+                  <div className="collections-list">
+                    {searchResults.manufacturers.map((name) => (
+                      <div
+                        key={name}
+                        className="collection-item"
+                        onClick={() => {
+                          clearSearch();
+                          navigate(`/quality-control/manufacturer/${name}`);
+                        }}
+                      >
+                        <div>
+                          <div className="collection-item-name">{name}</div>
+                          <div className="collection-item-meta">Manufacturer</div>
+                        </div>
+                        <div className="collection-item-arrow">→</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {searchResults.collections.length > 0 && (
                 <div className="search-results-section">
                   <h3 className="search-results-title">Collections ({searchResults.collections.length})</h3>

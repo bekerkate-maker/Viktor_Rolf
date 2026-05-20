@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
+import heicConvert from 'heic-convert';
 import { supabase } from '../database/supabase.js';
 import { verifyToken } from '../middleware/auth.js';
 
@@ -16,18 +17,14 @@ const upload = multer({
   fileFilter: function (req, file, cb) {
     const ext = path.extname(file.originalname).toLowerCase();
     
-    if (ext === '.heic' || ext === '.heif' || file.mimetype.includes('heic') || file.mimetype.includes('heif')) {
-      return cb(new Error('HEIC files are not supported by web browsers. Please convert your photo to JPG or PNG before uploading.'));
-    }
-
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const allowedTypes = /jpeg|jpg|png|gif|webp|heic|heif/;
     const extname = allowedTypes.test(ext);
-    const mimetype = allowedTypes.test(file.mimetype);
-
-    if (mimetype && extname) {
+    
+    // Some HEIC files don't have a recognized mimetype, so we rely on extension or broad matching
+    if (extname || file.mimetype.includes('heic') || file.mimetype.includes('heif') || file.mimetype.includes('image/')) {
       return cb(null, true);
     } else {
-      cb(new Error('Only standard image files (JPG, PNG) are allowed.'));
+      cb(new Error('Only standard image files (JPG, PNG, HEIC) are allowed.'));
     }
   }
 });
@@ -63,16 +60,37 @@ router.post('/samples/:sampleId', verifyToken, upload.array('photos', 10), async
     let nextOrder = (maxOrderData?.[0]?.display_order || 0) + 1;
     const uploadedPhotos = [];
 
-    for (const file of req.files) {
-      const fileExt = path.extname(file.originalname).toLowerCase();
+    for (let file of req.files) {
+      let fileExt = path.extname(file.originalname).toLowerCase();
+      let buffer = file.buffer;
+      let mimetype = file.mimetype;
+      let originalname = file.originalname;
+
+      // Handle HEIC conversion natively in backend
+      if (fileExt === '.heic' || fileExt === '.heif' || mimetype.includes('heic') || mimetype.includes('heif')) {
+        try {
+          buffer = await heicConvert({
+            buffer: file.buffer,
+            format: 'JPEG',
+            quality: 0.8
+          });
+          fileExt = '.jpg';
+          mimetype = 'image/jpeg';
+          originalname = originalname.replace(/\.hei[cf]$/i, '.jpg');
+        } catch (convErr) {
+          console.error('Backend HEIC conversion error:', convErr);
+          return res.status(500).json({ error: 'Failed to process HEIC image' });
+        }
+      }
+
       const fileName = `sample-${sampleId}-${Date.now()}-${Math.round(Math.random() * 1E9)}${fileExt}`;
       const filePath = `samples/${sampleId}/${fileName}`;
 
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('sample-photos')
-        .upload(filePath, file.buffer, {
-          contentType: file.mimetype,
+        .upload(filePath, buffer, {
+          contentType: mimetype,
           cacheControl: '3600',
           upsert: false
         });
@@ -93,7 +111,7 @@ router.post('/samples/:sampleId', verifyToken, upload.array('photos', 10), async
         .insert({
           sample_id: sampleId,
           file_path: publicUrl,
-          file_name: file.originalname,
+          file_name: originalname,
           display_order: nextOrder++,
           is_main_photo: false,
           photo_type: req.body.photo_type || 'Other'

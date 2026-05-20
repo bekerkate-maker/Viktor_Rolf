@@ -8,6 +8,7 @@ import { getStatusBadge } from '../components/SampleHeader';
 import EditSampleModal from '../components/EditSampleModal';
 // Voeg Lucide icons toe voor buttons
 import { Plus, X, ChevronLeft, ChevronRight, Trash2, Pencil, Check, Minus, Download, Scissors, Ruler, ClipboardCheck, Save, EyeOff, Eye, Activity, RefreshCw, Tag, Calendar, Factory, User, AlignLeft } from 'lucide-react';
+import { processFilesForUpload } from '../utils/heicConverter';
 
 
 function SampleDetail() {
@@ -401,7 +402,7 @@ function SampleDetail() {
           )}
         </div>
 
-        <div className="assessment-checklist-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 70px 70px 70px 40px', gap: 8, alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: 8, marginBottom: 12, fontWeight: 600, color: '#888', fontSize: 11, textTransform: 'uppercase' }}>
+        <div className="assessment-checklist-row assessment-checklist-header-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 70px 70px 70px 40px', gap: 8, alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: 8, marginBottom: 12, fontWeight: 600, color: '#888', fontSize: 11, textTransform: 'uppercase' }}>
           <div>Item</div>
           <div style={{ textAlign: 'center', color: '#e53935' }}>Rejected</div>
           <div style={{ textAlign: 'center', color: '#ffb300' }}>Review</div>
@@ -648,10 +649,11 @@ function SampleDetail() {
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0 || !id) return;
 
-    const files = Array.from(event.target.files);
+    let files = Array.from(event.target.files);
     setUploading(true);
 
     try {
+      files = await processFilesForUpload(files);
       await photosAPI.uploadPhotos(id, files);
       await loadPhotos(id);
       // Reset file input
@@ -669,10 +671,11 @@ function SampleDetail() {
   const handleQCFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0 || !id) return;
 
-    const files = Array.from(event.target.files);
+    let files = Array.from(event.target.files);
     setUploading(true);
 
     try {
+      files = await processFilesForUpload(files);
       await photosAPI.uploadPhotos(id, files, 'Issue');
       await loadPhotos(id);
       const fileInput = document.getElementById('qc-photo-upload') as HTMLInputElement;
@@ -1310,8 +1313,7 @@ function SampleDetail() {
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               title="Click to edit article details"
             >
-              <span style={{ 
-                fontSize: '13px', 
+              <span className="sample-detail-name" style={{ 
                 fontWeight: 700, 
                 letterSpacing: '2.5px', 
                 color: '#999', 
@@ -1319,8 +1321,7 @@ function SampleDetail() {
               }}>
                 {sample.name}
               </span>
-              <h1 style={{ 
-                fontSize: '48px', 
+              <h1 className="sample-detail-code" style={{ 
                 fontWeight: 300, 
                 margin: 0, 
                 color: '#111', 
@@ -1604,7 +1605,7 @@ function SampleDetail() {
                 id="photo-upload"
                 type="file"
                 multiple
-                accept="image/*"
+                accept="image/*,.heic,.heif"
                 onChange={handleFileSelect}
                 style={{ display: 'none' }}
                 disabled={uploading}
@@ -1869,7 +1870,7 @@ function SampleDetail() {
                 id="qc-photo-upload"
                 type="file"
                 multiple
-                accept="image/*"
+                accept="image/*,.heic,.heif"
                 onChange={handleQCFileSelect}
                 style={{ display: 'none' }}
                 disabled={uploading}

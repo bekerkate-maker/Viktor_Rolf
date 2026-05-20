@@ -6,6 +6,7 @@ import type { Sample, SamplePhoto } from '../types';
 import { getStatusBadge } from '../components/SampleHeader';
 import EditSampleModal from '../components/EditSampleModal';
 import { Plus, Move, Lock, Unlock } from 'lucide-react';
+import { processFilesForUpload } from '../utils/heicConverter';
 
 type WidgetConfig = {
   id: string;
@@ -73,7 +74,8 @@ function SampleDetailGrid() {
     if (!id || selectedFiles.length === 0) return;
     setUploading(true);
     try {
-      await photosAPI.uploadPhotos(id, selectedFiles);
+      const processedFiles = await processFilesForUpload(selectedFiles);
+      await photosAPI.uploadPhotos(id, processedFiles);
       setSelectedFiles([]);
       await loadPhotos(id);
       const fileInput = document.getElementById('photo-upload') as HTMLInputElement;
@@ -262,7 +264,7 @@ function SampleDetailGrid() {
                 id="photo-upload"
                 type="file"
                 multiple
-                accept="image/*"
+                accept="image/*,.heic,.heif"
                 onChange={handleFileSelect}
                 style={{ display: 'none' }}
               />
