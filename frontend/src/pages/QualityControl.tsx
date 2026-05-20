@@ -5,7 +5,7 @@ import type { Collection, Sample } from '../types';
 import AddSampleModal from '../components/AddSampleModal';
 import EditSampleModal from '../components/EditSampleModal';
 import ManufacturersModal from '../components/ManufacturersModal';
-import { Plus, Edit2, Trash2, X, Download } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Download, Camera } from 'lucide-react';
 
 type Category = 'Mariage' | 'Eyewear Collection' | 'Ready to Wear';
 
@@ -1721,13 +1721,16 @@ function QualityControl() {
                       
                       <Link to={`/samples/${sample.id}?fromCategory=${selectedCategory}&fromYear=${selectedYear}&fromSeason=${selectedSeason}`} style={{ display: 'contents', color: 'inherit', textDecoration: 'none' }}>
                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                          {sample.photos && sample.photos.length > 0 ? (
-                            <img src={sample.photos.find(p => p.is_main_photo)?.file_path || sample.photos[0].file_path} alt="Preview" style={{ width: 72, height: 72, borderRadius: 8, objectFit: 'cover', border: '1px solid #eee' }} />
-                          ) : (
-                            <div style={{ width: 72, height: 72, borderRadius: 8, background: '#f5f5f5', border: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <span style={{ fontSize: 24, color: '#ccc' }}>📷</span>
-                            </div>
-                          )}
+                          {(() => {
+                            const articlePhotos = sample.photos?.filter(p => p.photo_type !== 'Issue') || [];
+                            return articlePhotos.length > 0 ? (
+                              <img src={articlePhotos.find(p => p.is_main_photo)?.file_path || articlePhotos[0].file_path} alt="Preview" style={{ width: 72, height: 72, borderRadius: 8, objectFit: 'cover', border: '1px solid #eee' }} />
+                            ) : (
+                              <div style={{ width: 72, height: 72, borderRadius: 8, background: '#f5f5f5', border: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Camera size={24} color="#ccc" />
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div style={{ fontSize: '14px', fontWeight: 500 }}>{sample.sample_code}</div>
                         <div style={{ fontSize: '14px', fontWeight: 700, color: '#111' }}>{sample.name}</div>
@@ -1962,7 +1965,8 @@ function QualityControl() {
             }
           } catch (e) {}
 
-          const mainPhoto = sample.photos?.find(p => p.is_main_photo) || (sample.photos && sample.photos[0]);
+          const articlePhotos = sample.photos?.filter(p => p.photo_type !== 'Issue') || [];
+          const mainPhoto = articlePhotos.find(p => p.is_main_photo) || articlePhotos[0];
 
           return (
             <div key={sample.id} className="print-page">

@@ -28,16 +28,22 @@ const storage = multer.memoryStorage();
 
 const upload = multer({ 
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
   fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    
+    if (ext === '.heic' || ext === '.heif' || file.mimetype.includes('heic') || file.mimetype.includes('heif')) {
+      return cb(new Error('HEIC files are not supported by web browsers. Please convert your photo to JPG or PNG before uploading.'));
+    }
+
     const allowedTypes = /jpeg|jpg|png|gif|pdf/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const extname = allowedTypes.test(ext);
     const mimetype = allowedTypes.test(file.mimetype);
     
     if (mimetype && extname) {
       return cb(null, true);
     } else {
-      cb(new Error('Only images and PDFs are allowed'));
+      cb(new Error('Only standard image files and PDFs are allowed.'));
     }
   }
 });

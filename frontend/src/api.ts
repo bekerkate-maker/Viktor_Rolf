@@ -122,9 +122,10 @@ export const usersAPI = {
 
 // Sample Photos
 export const photosAPI = {
-  uploadPhotos: async (sampleId: string | number, files: File[]) => {
+  uploadPhotos: async (sampleId: string | number, files: File[], photoType?: string) => {
     const formData = new FormData();
     files.forEach((file) => formData.append('photos', file));
+    if (photoType) formData.append('photo_type', photoType);
     // Gebruik de standaard 'api' instance zodat de interceptors hun werk doen
     return api.post(`/photos/samples/${sampleId}`, formData);
   },

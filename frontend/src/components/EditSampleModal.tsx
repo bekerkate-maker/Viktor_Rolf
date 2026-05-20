@@ -150,16 +150,54 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     let value = e.target.value;
+    const targetName = e.target.name;
     const components = ['garment_type', 'garment_category', 'sequence', 'fabric_code', 'color_code', 'season_digit', 'year_digits'];
     
-    if (components.includes(e.target.name)) {
+    if (components.includes(targetName)) {
       value = value.toUpperCase();
     }
 
     setFormData({
       ...formData,
-      [e.target.name]: value,
+      [targetName]: value,
     });
+
+    // Auto-advance logic
+    if (e.target instanceof HTMLInputElement && components.includes(targetName)) {
+      const maxLength = e.target.maxLength;
+      const form = e.target.form;
+      if (maxLength > 0 && value.length >= maxLength) {
+        const currentIndex = components.indexOf(targetName);
+        if (currentIndex < components.length - 1) {
+          const nextName = components[currentIndex + 1];
+          setTimeout(() => {
+            const nextInput = form?.elements.namedItem(nextName) as HTMLInputElement;
+            if (nextInput && typeof nextInput.focus === 'function') {
+              nextInput.focus();
+              nextInput.select();
+            }
+          }, 10);
+        }
+      }
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const targetName = e.currentTarget.name;
+    const components = ['garment_type', 'garment_category', 'sequence', 'fabric_code', 'color_code', 'season_digit', 'year_digits'];
+    
+    if (e.key === 'Backspace' && e.currentTarget.value === '' && components.includes(targetName)) {
+      const currentIndex = components.indexOf(targetName);
+      if (currentIndex > 0) {
+        const prevName = components[currentIndex - 1];
+        const prevInput = e.currentTarget.form?.elements.namedItem(prevName) as HTMLInputElement;
+        if (prevInput && typeof prevInput.focus === 'function') {
+          prevInput.focus();
+          // Optional: we can select or put cursor at the end. Since they just hit backspace,
+          // selecting allows them to immediately overwrite, which is usually desired.
+        }
+      }
+    }
   };
 
   return (
@@ -182,6 +220,7 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
                     name="garment_type"
                     value={formData.garment_type}
                     onChange={handleChange}
+                    onKeyDown={handleKeyDown}
                     style={{ width: 45, padding: '8px 4px', textAlign: 'center', border: '1px solid #ddd', borderRadius: 4, fontSize: 14 }}
                     maxLength={1}
                   />
@@ -190,6 +229,7 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
                     name="garment_category"
                     value={formData.garment_category}
                     onChange={handleChange}
+                    onKeyDown={handleKeyDown}
                     style={{ width: 45, padding: '8px 4px', textAlign: 'center', border: '1px solid #ddd', borderRadius: 4, fontSize: 14 }}
                     maxLength={1}
                   />
@@ -202,6 +242,7 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
                   name="sequence"
                   value={formData.sequence}
                   onChange={handleChange}
+                  onKeyDown={handleKeyDown}
                   style={{ width: '100%', padding: '8px 8px', textAlign: 'center', border: '1px solid #ddd', borderRadius: 4, fontSize: 14 }}
                   maxLength={3}
                   placeholder="001"
@@ -214,6 +255,7 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
                   name="fabric_code"
                   value={formData.fabric_code}
                   onChange={handleChange}
+                  onKeyDown={handleKeyDown}
                   style={{ width: '100%', padding: '8px 8px', textAlign: 'center', border: '1px solid #ddd', borderRadius: 4, fontSize: 14 }}
                   maxLength={2}
                   placeholder="00"
@@ -227,6 +269,7 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
                     name="color_code"
                     value={formData.color_code}
                     onChange={handleChange}
+                    onKeyDown={handleKeyDown}
                     style={{ width: 55, padding: '8px 4px', textAlign: 'center', border: '1px solid #ddd', borderRadius: 4, fontSize: 14 }}
                     maxLength={2}
                     placeholder="11"
@@ -236,6 +279,7 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
                     name="season_digit"
                     value={formData.season_digit}
                     onChange={handleChange}
+                    onKeyDown={handleKeyDown}
                     style={{ width: 45, padding: '8px 4px', textAlign: 'center', border: '1px solid #ddd', borderRadius: 4, fontSize: 14 }}
                     maxLength={1}
                     placeholder="4"
@@ -245,6 +289,7 @@ function EditSampleModal({ isOpen, onClose, sample, onSampleUpdated }: EditSampl
                     name="year_digits"
                     value={formData.year_digits}
                     onChange={handleChange}
+                    onKeyDown={handleKeyDown}
                     style={{ width: 55, padding: '8px 4px', textAlign: 'center', border: '1px solid #ddd', borderRadius: 4, fontSize: 14 }}
                     maxLength={2}
                     placeholder="26"

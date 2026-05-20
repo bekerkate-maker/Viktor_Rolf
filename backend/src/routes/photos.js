@@ -11,17 +11,23 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB max
+    fileSize: 50 * 1024 * 1024 // 50MB max
   },
   fileFilter: function (req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    
+    if (ext === '.heic' || ext === '.heif' || file.mimetype.includes('heic') || file.mimetype.includes('heif')) {
+      return cb(new Error('HEIC files are not supported by web browsers. Please convert your photo to JPG or PNG before uploading.'));
+    }
+
     const allowedTypes = /jpeg|jpg|png|gif|webp/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const extname = allowedTypes.test(ext);
     const mimetype = allowedTypes.test(file.mimetype);
 
     if (mimetype && extname) {
       return cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed!'));
+      cb(new Error('Only standard image files (JPG, PNG) are allowed.'));
     }
   }
 });
@@ -73,7 +79,7 @@ router.post('/samples/:sampleId', verifyToken, upload.array('photos', 10), async
 
       if (uploadError) {
         console.error('Supabase upload error:', uploadError);
-        continue; // Skip this file and try next
+        return res.status(500).json({ error: `Storage error: ${uploadError.message}` });
       }
 
       // Get public URL
@@ -89,13 +95,15 @@ router.post('/samples/:sampleId', verifyToken, upload.array('photos', 10), async
           file_path: publicUrl,
           file_name: file.originalname,
           display_order: nextOrder++,
-          is_main_photo: false
+          is_main_photo: false,
+          photo_type: req.body.photo_type || 'Other'
         })
         .select()
         .single();
 
       if (insertError) {
         console.error('Database insert error:', insertError);
+        return res.status(500).json({ error: `Database error: ${insertError.message}` });
       } else {
         uploadedPhotos.push(photoRecord);
       }

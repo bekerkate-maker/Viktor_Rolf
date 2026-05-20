@@ -65,6 +65,7 @@ function SampleDetail() {
   const [savingChecks, setSavingChecks] = useState(false);
   const [hasSavedChecks, setHasSavedChecks] = useState(false);
   const [editModePrompt, setEditModePrompt] = useState(false);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [savedStateString, setSavedStateString] = useState<string>('');
@@ -108,6 +109,7 @@ function SampleDetail() {
       items: [
         '½ waist width',
         '½ hip width',
+        '½ thigh width',
         'Front rise',
         'Back rise',
         'inseam',
@@ -213,11 +215,19 @@ function SampleDetail() {
           overflow: 'hidden'
         }}
       >
-        <div style={{ minWidth: 0, fontWeight: 500, fontSize: 15, display: 'flex', flexDirection: 'column', color: showHidden ? '#888' : '#111' }}>
+        <div 
+          onClick={(e) => {
+            // Prevent opening comment when clicking the drag handle specifically (though usually drag doesn't trigger click)
+            if (!showHidden) setActiveCommentItem(activeCommentItem?.item === item && activeCommentItem?.type === type ? null : { type, item });
+          }}
+          style={{ minWidth: 0, fontWeight: 500, fontSize: 15, display: 'flex', flexDirection: 'column', color: showHidden ? '#888' : '#111', cursor: !showHidden ? 'pointer' : 'default' }}
+          title={!showHidden ? "Click to add/edit comment" : ""}
+        >
           <div style={{ display: 'flex', alignItems: 'center' }}>
             {!showHidden && (
               <div
                 className="no-print"
+                onClick={(e) => e.stopPropagation()}
                 style={{ marginRight: 8, color: comments[item] ? '#111' : '#ccc', cursor: 'grab', padding: 2, display: 'flex', transition: 'color 0.2s' }}
                 title="Drag to reorder"
               >
@@ -226,9 +236,7 @@ function SampleDetail() {
             )}
             
             <span 
-              onClick={() => !showHidden && setActiveCommentItem(activeCommentItem?.item === item && activeCommentItem?.type === type ? null : { type, item })}
-              style={{ textDecoration: showHidden ? 'line-through' : 'none', opacity: showHidden ? 0.6 : 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: !showHidden ? 'pointer' : 'default' }}
-              title={!showHidden ? "Click to add/edit comment" : ""}
+              style={{ textDecoration: showHidden ? 'line-through' : 'none', opacity: showHidden ? 0.6 : 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
             >
               {item}
             </span>
@@ -243,7 +251,8 @@ function SampleDetail() {
             {isCustom && (
               <button
                 className="no-print"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   const newState = { ...state };
                   delete newState[item];
                   setState(newState);
@@ -280,9 +289,10 @@ function SampleDetail() {
                   type="text"
                   placeholder="Add a note..."
                   value={comments[item] || ''}
+                  onClick={(e) => e.stopPropagation()}
                   autoFocus
                   onChange={(e) => setComments({ ...comments, [item]: e.target.value })}
-                  onBlur={() => !comments[item] && setActiveCommentItem(null)}
+                  onBlur={() => setActiveCommentItem(null)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') setActiveCommentItem(null);
                   }}
@@ -306,19 +316,40 @@ function SampleDetail() {
         </div>
 
         <div
-          onClick={() => !showHidden && setState({ ...state, [item]: 'reject' })}
+          onClick={() => {
+            if (!showHidden) {
+              const newState = { ...state };
+              if (newState[item] === 'reject') delete newState[item];
+              else newState[item] = 'reject';
+              setState(newState);
+            }
+          }}
           style={{ width: 70, height: 40, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: showHidden ? 'default' : 'pointer', borderRadius: 8, background: state[item] === 'reject' ? '#ffeeee' : '#f9f9f9', color: state[item] === 'reject' ? '#e53935' : '#ccc', border: state[item] === 'reject' ? '2px solid #e53935' : '1px solid #eee', transition: 'all 0.2s', opacity: showHidden ? 0.4 : 1 }}>
           <X size={20} strokeWidth={state[item] === 'reject' ? 3 : 2} />
         </div>
 
         <div
-          onClick={() => !showHidden && setState({ ...state, [item]: 'doubt' })}
+          onClick={() => {
+            if (!showHidden) {
+              const newState = { ...state };
+              if (newState[item] === 'doubt') delete newState[item];
+              else newState[item] = 'doubt';
+              setState(newState);
+            }
+          }}
           style={{ width: 70, height: 40, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: showHidden ? 'default' : 'pointer', borderRadius: 8, background: state[item] === 'doubt' ? '#fff8e1' : '#f9f9f9', color: state[item] === 'doubt' ? '#ffb300' : '#ccc', border: state[item] === 'doubt' ? '2px solid #ffb300' : '1px solid #eee', transition: 'all 0.2s', opacity: showHidden ? 0.4 : 1 }}>
           <Minus size={20} strokeWidth={state[item] === 'doubt' ? 3 : 2} />
         </div>
 
         <div
-          onClick={() => !showHidden && setState({ ...state, [item]: 'approve' })}
+          onClick={() => {
+            if (!showHidden) {
+              const newState = { ...state };
+              if (newState[item] === 'approve') delete newState[item];
+              else newState[item] = 'approve';
+              setState(newState);
+            }
+          }}
           style={{ width: 70, height: 40, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: showHidden ? 'default' : 'pointer', borderRadius: 8, background: state[item] === 'approve' ? '#e8f5e9' : '#f9f9f9', color: state[item] === 'approve' ? '#43a047' : '#ccc', border: state[item] === 'approve' ? '2px solid #43a047' : '1px solid #eee', transition: 'all 0.2s', opacity: showHidden ? 0.4 : 1 }}>
           <Check size={20} strokeWidth={state[item] === 'approve' ? 3 : 2} />
         </div>
@@ -635,6 +666,26 @@ function SampleDetail() {
     }
   };
 
+  const handleQCFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0 || !id) return;
+
+    const files = Array.from(event.target.files);
+    setUploading(true);
+
+    try {
+      await photosAPI.uploadPhotos(id, files, 'Issue');
+      await loadPhotos(id);
+      const fileInput = document.getElementById('qc-photo-upload') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+    } catch (error: any) {
+      console.error('Error uploading QC photos:', error);
+      const msg = error?.response?.data?.error || error?.message || 'Failed to upload photos';
+      alert(msg);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleDeletePhoto = async (photoId: string | number) => {
     if (!window.confirm('Are you sure you want to delete this photo?')) return;
 
@@ -660,6 +711,82 @@ function SampleDetail() {
     } catch (error: any) {
       console.error('Error setting main photo:', error);
       alert('Failed to set main photo');
+    }
+  };
+
+  const handleNavigateBack = () => {
+    if (fromManufacturer && fromCollection) {
+      navigate(`/quality-control/manufacturer/${fromManufacturer}/collection/${fromCollection}`);
+    } else if (fromCategory && fromYear && fromSeason) {
+      const categorySlug = fromCategory.toLowerCase().replace(/ /g, '-');
+      const seasonSlug = fromSeason.toLowerCase() === 'spring/summer' ? 'ss' : 'fw';
+      navigate(`/quality-control/${categorySlug}/${fromYear}/${seasonSlug}`);
+    } else if (sample?.collection_type && sample?.year && sample?.season) {
+      // Fallback for direct links
+      let categorySlug = sample.collection_type.toLowerCase();
+      if (categorySlug === 'rtw' || categorySlug.includes('ready to wear')) {
+        categorySlug = 'ready-to-wear';
+      } else if (categorySlug.includes('eyewear')) {
+        categorySlug = 'eyewear-collection';
+      } else {
+        categorySlug = categorySlug.replace(/ /g, '-');
+      }
+      
+      const seasonSlug = sample.season.toLowerCase();
+      navigate(`/quality-control/${categorySlug}/${sample.year}/${seasonSlug}`);
+    } else {
+      navigate('/quality-control');
+    }
+  };
+
+  const handleSaveAssessment = async () => {
+    if (!hasUnsavedChanges && lastSavedAt) return true;
+    setSavingChecks(true);
+    try {
+      let parsed = { _isJsonBlob: true, notes: '', fitChecks: {}, workChecks: {}, fitComments: {}, workComments: {}, hiddenFitItems: [], hiddenWorkItems: [] };
+      try {
+        const existing = JSON.parse(sample?.internal_notes || '{}');
+        if (existing && typeof existing === 'object' && existing._isJsonBlob) {
+          parsed = existing;
+        } else {
+          parsed.notes = sample?.internal_notes || '';
+        }
+      } catch (e) {
+        parsed.notes = sample?.internal_notes || '';
+      }
+
+      parsed.fitChecks = fitChecks;
+      parsed.workChecks = workChecks;
+      parsed.fitComments = fitComments;
+      parsed.workComments = workComments;
+      parsed.hiddenFitItems = hiddenFitItems as any;
+      parsed.hiddenWorkItems = hiddenWorkItems as any;
+
+      const now = new Date().toISOString();
+      await samplesAPI.update(String(sample?.id), {
+        internal_notes: JSON.stringify(parsed),
+        updated_at: now
+      });
+
+      setSavingChecks(false);
+      setHasSavedChecks(true);
+      setHasUnsavedChanges(false);
+      setSavedStateString(JSON.stringify({
+        fitChecks,
+        workChecks,
+        fitComments,
+        workComments,
+        hiddenFitItems,
+        hiddenWorkItems
+      }));
+      setLastSavedAt(now);
+      
+      setTimeout(() => setHasSavedChecks(false), 3000);
+      return true;
+    } catch (err) {
+      setSavingChecks(false);
+      alert('Oeps, kon checks niet opslaan.');
+      return false;
     }
   };
 
@@ -821,7 +948,7 @@ function SampleDetail() {
                 );
               })}
               {Object.keys(fitChecks).filter(k => fitChecks[k] && fitChecks[k] !== 'approve').length === 0 && (
-                <p style={{ textAlign: 'center', opacity: 0.5, marginTop: 40, fontSize: '12px' }}>No issues reported.</p>
+                <p style={{ textAlign: 'center', opacity: 0.5, marginTop: 40, fontSize: '12px', fontStyle: 'italic' }}>Fit is approved, no notes.</p>
               )}
             </div>
           </div>
@@ -846,13 +973,12 @@ function SampleDetail() {
                 );
               })}
               {Object.keys(workChecks).filter(k => workChecks[k] && workChecks[k] !== 'approve').length === 0 && (
-                <p style={{ textAlign: 'center', opacity: 0.5, marginTop: 40, fontSize: '12px' }}>No issues reported.</p>
+                <p style={{ textAlign: 'center', opacity: 0.5, marginTop: 40, fontSize: '12px', fontStyle: 'italic' }}>Workmanship is approved, no notes.</p>
               )}
             </div>
           </div>
         </div>
 
-        {/* BOTTOM ROW - Internal Notes */}
         <div className="print-notes-container">
           <div style={{ fontWeight: '900', textTransform: 'uppercase', fontSize: '12px', marginBottom: '8px', borderBottom: '1px solid #111', paddingBottom: '4px' }}>
             Internal Notes & Final Remarks
@@ -863,6 +989,22 @@ function SampleDetail() {
               : sample.internal_notes || 'No final remarks.'}
           </div>
         </div>
+
+        {/* QC Photos for PDF */}
+        {qcPhotos.length > 0 && (
+          <div className="print-qc-photos-container" style={{ marginTop: '12px', marginBottom: '12px', border: '1.5px solid #000', padding: '15px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ fontWeight: '900', textTransform: 'uppercase', fontSize: '12px', marginBottom: '10px', borderBottom: '1px solid #111', paddingBottom: '4px' }}>
+              Quality Control Pictures
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+              {qcPhotos.map(photo => (
+                <div key={photo.id} style={{ width: '100%', aspectRatio: '1/1', border: '1px solid #eee' }}>
+                  <img src={photo.file_path} alt="QC" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* FOOTER - Thank You */}
         <div className="print-footer-container">
@@ -878,6 +1020,9 @@ function SampleDetail() {
   if (loading) {
     return <div className="loading luxury-font">Loading article...</div>;
   }
+  
+  const articlePhotos = photos.filter(p => p.photo_type !== 'Issue');
+  const qcPhotos = photos.filter(p => p.photo_type === 'Issue');
   return (
     <>
       <style>{`
@@ -1030,27 +1175,10 @@ function SampleDetail() {
         <div style={{ flex: 1 }}>
           <div
             onClick={() => {
-              if (fromManufacturer && fromCollection) {
-                navigate(`/quality-control/manufacturer/${fromManufacturer}/collection/${fromCollection}`);
-              } else if (fromCategory && fromYear && fromSeason) {
-                const categorySlug = fromCategory.toLowerCase().replace(/ /g, '-');
-                const seasonSlug = fromSeason.toLowerCase() === 'spring/summer' ? 'ss' : 'fw';
-                navigate(`/quality-control/${categorySlug}/${fromYear}/${seasonSlug}`);
-              } else if (sample.collection_type && sample.year && sample.season) {
-                // Fallback for direct links
-                let categorySlug = sample.collection_type.toLowerCase();
-                if (categorySlug === 'rtw' || categorySlug.includes('ready to wear')) {
-                  categorySlug = 'ready-to-wear';
-                } else if (categorySlug.includes('eyewear')) {
-                  categorySlug = 'eyewear-collection';
-                } else {
-                  categorySlug = categorySlug.replace(/ /g, '-');
-                }
-                
-                const seasonSlug = sample.season.toLowerCase();
-                navigate(`/quality-control/${categorySlug}/${sample.year}/${seasonSlug}`);
+              if (hasUnsavedChanges) {
+                setShowUnsavedModal(true);
               } else {
-                navigate('/quality-control');
+                handleNavigateBack();
               }
             }}
             style={{
@@ -1395,14 +1523,14 @@ function SampleDetail() {
             </div>
           </div>
 
-          <div className="print-top-section" style={{ display: 'grid', gridTemplateColumns: photos.length > 0 ? '1fr 1fr' : '1fr', gap: 24, alignItems: 'stretch' }}>
+          <div className="print-top-section" style={{ display: 'grid', gridTemplateColumns: articlePhotos.length > 0 ? '1fr 1fr' : '1fr', gap: 24, alignItems: 'stretch' }}>
           {/* Linker kolom: Photos */}
           <div className="luxury-card no-print" style={{ border: '1px solid #eee', borderRadius: 12, background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.03)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <div style={{ height: 650, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, background: '#f5f5f5' }}>
-              {photos.length > 0 ? (
+              {articlePhotos.length > 0 ? (
                 <>
-                  {photos.slice(0, 2).map((photo, index) => {
-                    const isLastWithMore = index === 1 && photos.length > 2;
+                  {articlePhotos.slice(0, 2).map((photo, index) => {
+                    const isLastWithMore = index === 1 && articlePhotos.length > 2;
                     return (
                       <div
                         key={photo.id}
@@ -1441,14 +1569,14 @@ function SampleDetail() {
                             fontWeight: 600,
                             boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
                           }}>
-                            +{photos.length - 2}
+                            +{articlePhotos.length - 2}
                           </div>
                         )}
                       </div>
                     );
                   })}
                   {/* Fill second slot if only 1 photo exists */}
-                  {photos.length === 1 && (
+                  {articlePhotos.length === 1 && (
                     <div style={{ 
                       background: '#fcfcfc', 
                       display: 'flex', 
@@ -1684,54 +1812,7 @@ function SampleDetail() {
               </div>
             )}
             <button
-              onClick={async () => {
-                if (!hasUnsavedChanges && lastSavedAt) return;
-                setSavingChecks(true);
-                try {
-                  let parsed = { _isJsonBlob: true, notes: '', fitChecks: {}, workChecks: {}, fitComments: {}, workComments: {}, hiddenFitItems: [], hiddenWorkItems: [] };
-                  try {
-                    const existing = JSON.parse(sample?.internal_notes || '{}');
-                    if (existing && typeof existing === 'object' && existing._isJsonBlob) {
-                      parsed = existing;
-                    } else {
-                      parsed.notes = sample?.internal_notes || '';
-                    }
-                  } catch (e) {
-                    parsed.notes = sample?.internal_notes || '';
-                  }
-
-                  parsed.fitChecks = fitChecks;
-                  parsed.workChecks = workChecks;
-                  parsed.fitComments = fitComments;
-                  parsed.workComments = workComments;
-                  parsed.hiddenFitItems = hiddenFitItems as any;
-                  parsed.hiddenWorkItems = hiddenWorkItems as any;
-
-                  const now = new Date().toISOString();
-                  await samplesAPI.update(String(sample?.id), {
-                    internal_notes: JSON.stringify(parsed),
-                    updated_at: now
-                  });
-
-                  setSavingChecks(false);
-                  setHasSavedChecks(true);
-                  setHasUnsavedChanges(false);
-                  setSavedStateString(JSON.stringify({
-                    fitChecks,
-                    workChecks,
-                    fitComments,
-                    workComments,
-                    hiddenFitItems,
-                    hiddenWorkItems
-                  }));
-                  setLastSavedAt(now);
-                  
-                  setTimeout(() => setHasSavedChecks(false), 3000);
-                } catch (err) {
-                  setSavingChecks(false);
-                  alert('Oeps, kon checks niet opslaan.');
-                }
-              }}
+              onClick={handleSaveAssessment}
               disabled={savingChecks || (!hasUnsavedChanges && !!lastSavedAt && !hasSavedChecks)}
               style={{
                 display: 'flex',
@@ -1763,6 +1844,57 @@ function SampleDetail() {
               {hasSavedChecks ? <Check size={14} /> : savingChecks ? <RefreshCw className="animate-spin" size={14} /> : <Save size={14} />}
               {savingChecks ? 'Saving...' : hasSavedChecks ? 'Assessment Saved' : hasUnsavedChanges ? 'Save Changes' : (lastSavedAt ? 'Saved' : 'Save Assessment')}
             </button>
+          </div>
+
+          {/* Quality Control Pictures */}
+          <div className="luxury-card no-print" style={{ border: '1px solid #eee', borderRadius: 12, background: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', padding: 24, display: 'flex', flexDirection: 'column', marginBottom: 24 }}>
+            <h3 className="luxury-card-title" style={{ fontWeight: 600, fontSize: 18, letterSpacing: 1, marginBottom: 16 }}>Quality Control Pictures</h3>
+            {qcPhotos.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12, marginBottom: 16 }}>
+                {qcPhotos.map((photo, index) => (
+                  <div key={photo.id} style={{ position: 'relative', width: '100%', aspectRatio: '1/1', border: '1px solid #eee', borderRadius: 8, overflow: 'hidden' }}>
+                    <img src={photo.file_path} alt="QC" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <button
+                      onClick={() => handleDeletePhoto(photo.id)}
+                      style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(255,255,255,0.8)', border: 'none', borderRadius: '50%', padding: 4, cursor: 'pointer', color: '#e53935' }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex' }}>
+              <input
+                id="qc-photo-upload"
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleQCFileSelect}
+                style={{ display: 'none' }}
+                disabled={uploading}
+              />
+              <label
+                htmlFor="qc-photo-upload"
+                className="btn luxury-btn"
+                style={{
+                  padding: '8px 18px',
+                  fontWeight: 500,
+                  borderRadius: 8,
+                  background: uploading ? '#ccc' : '#f5f5f5',
+                  border: '1px solid #eee',
+                  cursor: uploading ? 'not-allowed' : 'pointer',
+                  opacity: uploading ? 0.7 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: 13
+                }}
+              >
+                <Plus size={16} />
+                {uploading ? 'Uploading...' : 'Add QC Pictures'}
+              </label>
+            </div>
           </div>
 
           {/* Internal Notes in een full-width block eronder */}
@@ -2105,6 +2237,79 @@ function SampleDetail() {
             boxShadow: '0 30px 60px rgba(0,0,0,0.5)',
           }}>
             {renderPDFContent()}
+          </div>
+        </div>
+      )}
+      {/* Unsaved Changes Modal */}
+      {showUnsavedModal && (
+        <div className="modal-overlay" onClick={() => setShowUnsavedModal(false)} style={{ zIndex: 9999 }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 450, padding: 32 }}>
+            <div className="modal-header" style={{ marginBottom: 24, borderBottom: 'none', padding: 0 }}>
+              <h2 style={{ margin: 0, fontSize: 20, color: '#111' }}>Onopgeslagen Wijzigingen</h2>
+            </div>
+            <div className="modal-body" style={{ padding: 0, marginBottom: 32 }}>
+              <p style={{ color: '#666', fontSize: 15, lineHeight: 1.5 }}>
+                Je hebt wijzigingen gemaakt die nog niet zijn opgeslagen. Wil je deze opslaan voordat je weggaat?
+              </p>
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 0, borderTop: 'none' }}>
+              <button 
+                onClick={async () => {
+                  const success = await handleSaveAssessment();
+                  if (success) {
+                    setShowUnsavedModal(false);
+                    handleNavigateBack();
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: '#111',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Opslaan & Verlaten
+              </button>
+              <button 
+                onClick={() => {
+                  setShowUnsavedModal(false);
+                  handleNavigateBack();
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: '#fff',
+                  color: '#e53935',
+                  border: '1px solid #e53935',
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Verlaten Zonder Opslaan
+              </button>
+              <button 
+                onClick={() => setShowUnsavedModal(false)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'transparent',
+                  color: '#666',
+                  border: 'none',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+              >
+                Annuleren
+              </button>
+            </div>
           </div>
         </div>
       )}

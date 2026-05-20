@@ -51,8 +51,8 @@ app.get('/api/health', (req, res) => {
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({
-    error: 'Something went wrong!',
-    message: err.message
+    error: err.message || 'Something went wrong!',
+    details: err.message
   });
 });
 

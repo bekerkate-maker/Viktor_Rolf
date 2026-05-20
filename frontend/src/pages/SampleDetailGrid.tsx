@@ -78,6 +78,10 @@ function SampleDetailGrid() {
       await loadPhotos(id);
       const fileInput = document.getElementById('photo-upload') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
+    } catch (error: any) {
+      console.error('Error uploading photos:', error);
+      const msg = error?.response?.data?.error || error?.message || 'Failed to upload photos';
+      alert(msg);
     } finally {
       setUploading(false);
     }
