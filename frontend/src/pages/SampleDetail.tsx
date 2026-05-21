@@ -1004,8 +1004,10 @@ function SampleDetail() {
 
         {/* QC Photos for PDF (Now on the second page) */}
         {qcPhotos.length > 0 && (
-          <div className="print-page" style={{ pageBreakBefore: 'always', height: 'auto', minHeight: '297mm' }}>
-            <div className="print-qc-photos-container" style={{ margin: '0', border: '1.5px solid #000', padding: '15px', display: 'flex', flexDirection: 'column' }}>
+          <>
+            <div className="html2pdf__page-break"></div>
+            <div className="print-page" style={{ height: 'auto', minHeight: '296mm' }}>
+              <div className="print-qc-photos-container" style={{ margin: '0', border: '1.5px solid #000', padding: '15px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ fontWeight: '900', textTransform: 'uppercase', fontSize: '12px', marginBottom: '10px', borderBottom: '1px solid #111', paddingBottom: '4px' }}>
                 Quality Control Pictures
               </div>
@@ -1025,6 +1027,7 @@ function SampleDetail() {
               </div>
             </div>
           </div>
+          </>
         )}
       </div>
     );
