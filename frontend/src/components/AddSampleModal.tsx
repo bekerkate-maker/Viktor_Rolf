@@ -414,7 +414,7 @@ function AddSampleModal({ isOpen, onClose, collections, onSampleAdded }: AddSamp
                 <option value="In Review">In Review</option>
                 <option value="Changes Needed">Changes Needed</option>
                 <option value="Approved">Approved</option>
-                <option value="Rejected">Rejected</option>
+                <option value="Rejected">Fail</option>
               </select>
             </div>
           </div>

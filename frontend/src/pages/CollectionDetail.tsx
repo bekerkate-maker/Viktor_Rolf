@@ -131,7 +131,7 @@ function CollectionDetail() {
                               : 'progress'
                         }`}
                     >
-                      {sample.status}
+                      {sample.status === 'Rejected' ? 'Fail' : sample.status}
                     </span>
                   </td>
                   <td>{sample.responsible_user_name}</td>

@@ -97,7 +97,7 @@ function Collections() {
                 </div>
                 <div className="collection-stat">
                   <span className="badge badge-rejected">{collection.rejected_count || 0}</span>
-                  <span>Rejected</span>
+                  <span>Fail</span>
                 </div>
               </div>
               <div className="mt-md" style={{ fontSize: '0.875rem', color: 'var(--vr-gray)' }}>

@@ -211,7 +211,7 @@ function SampleDetail() {
             <span className="print-only print-status-marker" style={{ display: 'none' }}>
               {state[item] === 'approve' && <span className="status-approve">Approved</span>}
               {state[item] === 'doubt' && <span className="status-doubt">Review</span>}
-              {state[item] === 'reject' && <span className="status-reject">Rejected</span>}
+              {state[item] === 'reject' && <span className="status-reject">Fail</span>}
               {!state[item] && <span>No result</span>}
             </span>
             
@@ -371,7 +371,7 @@ function SampleDetail() {
 
         <div className="assessment-checklist-row assessment-checklist-header-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 70px 70px 70px 40px', gap: 8, alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: 8, marginBottom: 12, fontWeight: 600, color: '#888', fontSize: 11, textTransform: 'uppercase' }}>
           <div>Item</div>
-          <div style={{ textAlign: 'center', color: '#e53935' }}>Rejected</div>
+          <div style={{ textAlign: 'center', color: '#e53935' }}>Fail</div>
           <div style={{ textAlign: 'center', color: '#ffb300' }}>Review</div>
           <div style={{ textAlign: 'center', color: '#43a047' }}>Approved</div>
           <div />
@@ -937,7 +937,7 @@ function SampleDetail() {
               {Object.keys(fitChecks).map(key => {
                 const value = fitChecks[key];
                 if (value === 'approve' || !value) return null;
-                const label = value === 'reject' ? 'Rejected' : value === 'doubt' ? 'Review' : String(value);
+                const label = value === 'reject' ? 'Fail' : value === 'doubt' ? 'Review' : String(value);
                 return (
                   <div key={key} className="print-assessment-item" style={{ marginBottom: '10px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
                     <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }}>
@@ -962,7 +962,7 @@ function SampleDetail() {
             <div className="print-assessment-list">
               {Object.entries(workChecks).map(([key, value]) => {
                 if (value === 'approve' || !value) return null;
-                const label = value === 'reject' ? 'Rejected' : value === 'doubt' ? 'Review' : String(value);
+                const label = value === 'reject' ? 'Fail' : value === 'doubt' ? 'Review' : String(value);
                 return (
                   <div key={key} className="print-assessment-item" style={{ marginBottom: '10px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
                     <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }}>

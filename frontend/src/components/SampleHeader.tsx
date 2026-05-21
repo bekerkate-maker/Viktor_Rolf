@@ -11,8 +11,9 @@ export const getStatusBadge = (status: string) => {
   switch (status) {
     case 'Approved':
       color = '#065f46'; bg = '#f0fdf4'; dot = '#065f46'; break;
+    case 'Fail':
     case 'Rejected':
-      color = '#991b1b'; bg = '#fef2f2'; dot = '#991b1b'; break;
+      color = '#991b1b'; bg = '#fef2f2'; dot = '#991b1b'; label = 'Fail'; break;
     case 'Changes Needed':
       color = '#b45309'; bg = '#fffbeb'; dot = '#b45309'; break;
     case 'None':

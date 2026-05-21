@@ -577,8 +577,8 @@ function QualityControl() {
       'Status', 
       'Last Comment', 
       'Responsible', 
-      'Rejected Fit Items', 
-      'Rejected Workmanship Items'
+      'Failed Fit Items', 
+      'Failed Workmanship Items'
     ];
 
     const escapeCSV = (str: any) => {
@@ -916,7 +916,7 @@ function QualityControl() {
                     Manufacturer Performance Overview
                   </div>
                   <div style={{ fontSize: '14px', color: '#666' }}>
-                    Total Rejected Defaults {params.collectionId ? `in ${collections[0]?.name || ''}` : 'across all productions'}
+                    Total Failed Defaults {params.collectionId ? `in ${collections[0]?.name || ''}` : 'across all productions'}
                   </div>
                   <div style={{ fontSize: '24px', fontWeight: 300, color: (params.collectionId ? (collectionRejectedCount || 0) : (totalManufacturerRejected || 0)) > 0 ? '#ff4d4f' : '#43a047', marginTop: 8 }}>
                     {params.collectionId ? collectionRejectedCount : totalManufacturerRejected}
@@ -1002,7 +1002,7 @@ function QualityControl() {
                     Manufacturer Performance Overview
                   </div>
                   <div style={{ fontSize: '14px', color: '#666' }}>
-                    Total Rejected Defaults {params.collectionId ? `in ${collections[0]?.name || ''}` : 'across all productions'}
+                    Total Failed Defaults {params.collectionId ? `in ${collections[0]?.name || ''}` : 'across all productions'}
                   </div>
                   <div style={{ fontSize: '24px', fontWeight: 300, color: (params.collectionId ? (collectionRejectedCount || 0) : (totalManufacturerRejected || 0)) > 0 ? '#ff4d4f' : '#43a047', marginTop: 8 }}>
                     {params.collectionId ? collectionRejectedCount : totalManufacturerRejected}
@@ -2039,7 +2039,7 @@ function QualityControl() {
                   <div className="print-assessment-list">
                     {Object.entries(assessment.fitChecks || {}).map(([key, value]) => {
                       if (value === 'approve' || !value) return null;
-                      const label = value === 'reject' ? 'Rejected' : value === 'doubt' ? 'Review' : String(value);
+                      const label = value === 'reject' ? 'Fail' : value === 'doubt' ? 'Review' : String(value);
                       return (
                         <div key={key} className="print-assessment-item">
                           <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00' }}>
@@ -2064,7 +2064,7 @@ function QualityControl() {
                   <div className="print-assessment-list">
                     {Object.entries(assessment.workChecks || {}).map(([key, value]) => {
                       if (value === 'approve' || !value) return null;
-                      const label = value === 'reject' ? 'Rejected' : value === 'doubt' ? 'Review' : String(value);
+                      const label = value === 'reject' ? 'Fail' : value === 'doubt' ? 'Review' : String(value);
                       return (
                         <div key={key} className="print-assessment-item" style={{ marginBottom: '8px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
                           <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold' }}>
