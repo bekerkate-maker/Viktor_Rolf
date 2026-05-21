@@ -991,9 +991,17 @@ function SampleDetail() {
           </div>
         </div>
 
-        {/* QC Photos for PDF */}
+        {/* FOOTER - Thank You (Now on the first page) */}
+        <div className="print-footer-container">
+          <div style={{ fontWeight: '900', fontSize: '20px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '2px' }}>Thank You</div>
+          <div style={{ fontSize: '11px', color: '#111', maxWidth: '650px', margin: '0 auto', lineHeight: '1.4' }}>
+            We kindly ask you to review these quality control notes and apply the necessary adjustments for the next sample round
+          </div>
+        </div>
+
+        {/* QC Photos for PDF (Now on the second page) */}
         {qcPhotos.length > 0 && (
-          <div className="print-qc-photos-container" style={{ marginTop: '12px', marginBottom: '12px', border: '1.5px solid #000', padding: '15px', display: 'flex', flexDirection: 'column' }}>
+          <div className="print-qc-photos-container" style={{ pageBreakBefore: 'always', marginTop: '40px', marginBottom: '12px', border: '1.5px solid #000', padding: '15px', display: 'flex', flexDirection: 'column' }}>
             <div style={{ fontWeight: '900', textTransform: 'uppercase', fontSize: '12px', marginBottom: '10px', borderBottom: '1px solid #111', paddingBottom: '4px' }}>
               Quality Control Pictures
             </div>
@@ -1013,14 +1021,6 @@ function SampleDetail() {
             </div>
           </div>
         )}
-
-        {/* FOOTER - Thank You */}
-        <div className="print-footer-container">
-          <div style={{ fontWeight: '900', fontSize: '20px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '2px' }}>Thank You</div>
-          <div style={{ fontSize: '11px', color: '#111', maxWidth: '650px', margin: '0 auto', lineHeight: '1.4' }}>
-            We kindly ask you to review these quality control notes and apply the necessary adjustments for the next sample round
-          </div>
-        </div>
       </div>
     );
   };
