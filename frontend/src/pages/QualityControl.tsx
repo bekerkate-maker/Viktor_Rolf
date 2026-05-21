@@ -2009,24 +2009,24 @@ function QualityControl() {
                 </div>
                 <div className="print-info-container">
                   <div className="print-info-item">
-                    <span className="print-info-label">Article Identification: </span>
-                    <span style={{ fontWeight: 800, fontSize: '16px' }}>{sample.sample_code}</span>
+                    <span className="print-info-label" style={{ fontWeight: 'bold' }}>Article Identification: </span>
+                    <span style={{ fontWeight: 'normal' }}>{sample.sample_code}</span>
                   </div>
                   <div className="print-info-item">
-                    <span className="print-info-label">Article Name: </span>
-                    <span>{sample.name}</span>
+                    <span className="print-info-label" style={{ fontWeight: 'bold' }}>Article Name: </span>
+                    <span style={{ fontWeight: 'normal' }}>{sample.name}</span>
                   </div>
                   <div className="print-info-item">
-                    <span className="print-info-label">Category: </span>
-                    <span>{sample.product_type}</span>
+                    <span className="print-info-label" style={{ fontWeight: 'bold' }}>Category: </span>
+                    <span style={{ fontWeight: 'normal' }}>{sample.product_type}</span>
                   </div>
                   <div className="print-info-item">
-                    <span className="print-info-label">Season: </span>
-                    <span>{sample.season} {sample.year}</span>
+                    <span className="print-info-label" style={{ fontWeight: 'bold' }}>Season: </span>
+                    <span style={{ fontWeight: 'normal' }}>{sample.season} {sample.year}</span>
                   </div>
                   <div className="print-info-item">
-                    <span className="print-info-label">Manufacturer: </span>
-                    <span style={{ fontWeight: 600 }}>{sample.supplier_name || 'N/A'}</span>
+                    <span className="print-info-label" style={{ fontWeight: 'bold' }}>Manufacturer: </span>
+                    <span style={{ fontWeight: 'normal' }}>{sample.supplier_name || 'N/A'}</span>
                   </div>
                 </div>
               </div>

@@ -901,28 +901,28 @@ function SampleDetail() {
           </div>
           <div className="print-info-container">
             <div className="print-info-item" style={{ marginBottom: '10px' }}>
-              <span className="print-info-label" style={{ fontWeight: 600 }}>Article Identification: </span>
-              <span style={{ fontWeight: 800, fontSize: '16px' }}>{sample.sample_code}</span>
+              <span className="print-info-label" style={{ fontWeight: 'bold' }}>Article Identification: </span>
+              <span style={{ fontWeight: 'normal' }}>{sample.sample_code}</span>
             </div>
             <div className="print-info-item" style={{ marginBottom: '6px' }}>
-              <span className="print-info-label" style={{ fontWeight: 600 }}>Article Name: </span>
-              <span>{sample.name}</span>
+              <span className="print-info-label" style={{ fontWeight: 'bold' }}>Article Name: </span>
+              <span style={{ fontWeight: 'normal' }}>{sample.name}</span>
             </div>
             <div className="print-info-item" style={{ marginBottom: '6px' }}>
-              <span className="print-info-label" style={{ fontWeight: 600 }}>Category: </span>
-              <span>{sample.product_type}</span>
+              <span className="print-info-label" style={{ fontWeight: 'bold' }}>Category: </span>
+              <span style={{ fontWeight: 'normal' }}>{sample.product_type}</span>
             </div>
             <div className="print-info-item" style={{ marginBottom: '6px' }}>
-              <span className="print-info-label" style={{ fontWeight: 600 }}>Season: </span>
-              <span>{sample.season} {sample.year}</span>
+              <span className="print-info-label" style={{ fontWeight: 'bold' }}>Season: </span>
+              <span style={{ fontWeight: 'normal' }}>{sample.season} {sample.year}</span>
             </div>
             <div className="print-info-item" style={{ marginBottom: '6px' }}>
-              <span className="print-info-label" style={{ fontWeight: 600 }}>Manufacturer: </span>
-              <span style={{ fontWeight: 800 }}>{sample.supplier_name || 'N/A'}</span>
+              <span className="print-info-label" style={{ fontWeight: 'bold' }}>Manufacturer: </span>
+              <span style={{ fontWeight: 'normal' }}>{sample.supplier_name || 'N/A'}</span>
             </div>
             <div className="print-info-item">
-              <span className="print-info-label" style={{ fontWeight: 600 }}>Style Note: </span>
-              <span>{sample.tags || '—'}</span>
+              <span className="print-info-label" style={{ fontWeight: 'bold' }}>Style Note: </span>
+              <span style={{ fontWeight: 'normal' }}>{sample.tags || '—'}</span>
             </div>
           </div>
         </div>
