@@ -796,8 +796,8 @@ function SampleDetail() {
   };
 
   const handleFinalDownload = () => {
-    // Target the actual sheet inside the modal
-    const element = document.querySelector('.pdf-preview-modal .print-page') as HTMLElement;
+    // Target the full content wrapper instead of just the first page
+    const element = document.querySelector(`#pdf-content-${sample?.id}`) as HTMLElement;
     if (!element) {
       alert('Could not find print content');
       return;
@@ -814,7 +814,8 @@ function SampleDetail() {
         letterRendering: true,
         backgroundColor: '#ffffff'
       },
-      jsPDF:        { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
+      jsPDF:        { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const },
+      pagebreak:    { mode: ['css', 'legacy'] }
     };
 
     // Use html2pdf
