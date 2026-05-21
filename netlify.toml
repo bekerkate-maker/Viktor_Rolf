@@ -5,6 +5,7 @@
 [functions]
   directory = "backend/src/functions"
   node_bundler = "esbuild"
+  external_node_modules = ["heic-convert"]
 
 # Proxy requests starting with /api to our serverless function
 [[redirects]]
