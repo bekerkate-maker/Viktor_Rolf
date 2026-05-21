@@ -882,7 +882,8 @@ function SampleDetail() {
   const renderPDFContent = () => {
     if (!sample) return null;
     return (
-      <div className="print-page">
+      <div id={`pdf-content-${sample.id}`}>
+        <div className="print-page">
         {/* HEADER BRANDING */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', fontSize: '10px', fontWeight: 600, borderBottom: '1px solid #eee', paddingBottom: '5px' }}>
           <span>Viktor & Rolf | Quality Control System</span>
@@ -998,26 +999,29 @@ function SampleDetail() {
             We kindly ask you to review these quality control notes and apply the necessary adjustments for the next sample round
           </div>
         </div>
+        </div> {/* End of first page */}
 
         {/* QC Photos for PDF (Now on the second page) */}
         {qcPhotos.length > 0 && (
-          <div className="print-qc-photos-container" style={{ pageBreakBefore: 'always', marginTop: '40px', marginBottom: '12px', border: '1.5px solid #000', padding: '15px', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ fontWeight: '900', textTransform: 'uppercase', fontSize: '12px', marginBottom: '10px', borderBottom: '1px solid #111', paddingBottom: '4px' }}>
-              Quality Control Pictures
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
-              {qcPhotos.map(photo => (
-                <div key={photo.id} style={{ width: '100%', breakInside: 'avoid', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <div style={{ aspectRatio: '1/1', border: '1px solid #eee' }}>
-                    <img src={photo.file_path} alt="QC" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                  {photo.file_name && (
-                    <div style={{ fontSize: 9, color: '#333', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.2 }}>
-                      {photo.file_name}
+          <div className="print-page" style={{ pageBreakBefore: 'always', height: 'auto', minHeight: '297mm' }}>
+            <div className="print-qc-photos-container" style={{ margin: '0', border: '1.5px solid #000', padding: '15px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontWeight: '900', textTransform: 'uppercase', fontSize: '12px', marginBottom: '10px', borderBottom: '1px solid #111', paddingBottom: '4px' }}>
+                Quality Control Pictures
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                {qcPhotos.map(photo => (
+                  <div key={photo.id} style={{ width: '100%', breakInside: 'avoid', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{ aspectRatio: '1/1', border: '1px solid #eee' }}>
+                      <img src={photo.file_path} alt="QC" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
-                  )}
-                </div>
-              ))}
+                    {photo.file_name && (
+                      <div style={{ fontSize: 9, color: '#333', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.2 }}>
+                        {photo.file_name}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
