@@ -1010,9 +1010,9 @@ function SampleDetail() {
               <div style={{ fontWeight: '900', textTransform: 'uppercase', fontSize: '12px', marginBottom: '10px', borderBottom: '1px solid #111', paddingBottom: '4px' }}>
                 Quality Control Pictures
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                 {qcPhotos.map(photo => (
-                  <div key={photo.id} style={{ width: '100%', breakInside: 'avoid', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div key={photo.id} style={{ width: 'calc((100% - 30px) / 4)', breakInside: 'avoid', display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <div style={{ aspectRatio: '1/1', border: '1px solid #eee' }}>
                       <img src={photo.file_path} alt="QC" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
