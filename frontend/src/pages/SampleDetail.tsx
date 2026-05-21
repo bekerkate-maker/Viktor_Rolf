@@ -883,7 +883,7 @@ function SampleDetail() {
   const renderPDFContent = () => {
     if (!sample) return null;
     return (
-      <div id={`pdf-content-${sample.id}`}>
+      <div id={`pdf-content-${sample.id}`} style={{ margin: 0, padding: 0, boxSizing: 'border-box' }}>
         <div className="print-page">
         {/* HEADER BRANDING */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', fontSize: '10px', fontWeight: 600, borderBottom: '1px solid #eee', paddingBottom: '5px' }}>
@@ -1005,8 +1005,7 @@ function SampleDetail() {
         {/* QC Photos for PDF (Now on the second page) */}
         {qcPhotos.length > 0 && (
           <>
-            <div className="html2pdf__page-break"></div>
-            <div className="print-page" style={{ height: 'auto', minHeight: '296mm' }}>
+            <div className="print-page" style={{ pageBreakBefore: 'always', height: 'auto', minHeight: '296mm' }}>
               <div className="print-qc-photos-container" style={{ margin: '0', border: '1.5px solid #000', padding: '15px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ fontWeight: '900', textTransform: 'uppercase', fontSize: '12px', marginBottom: '10px', borderBottom: '1px solid #111', paddingBottom: '4px' }}>
                 Quality Control Pictures
@@ -1045,7 +1044,7 @@ function SampleDetail() {
         /* PDF Shared Styles (Preview & Print) */
         .print-page { 
           padding: 10mm; 
-          height: 297mm; 
+          height: 296mm; 
           width: 210mm;
           display: flex;
           flex-direction: column;
