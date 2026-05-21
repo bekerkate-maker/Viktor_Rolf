@@ -60,7 +60,7 @@ router.post('/samples/:sampleId', verifyToken, upload.array('photos', 10), async
     let nextOrder = (maxOrderData?.[0]?.display_order || 0) + 1;
     const uploadedPhotos = [];
 
-    for (let file of req.files) {
+    const uploadPromises = req.files.map(async (file, index) => {
       let fileExt = path.extname(file.originalname).toLowerCase();
       let buffer = file.buffer;
       let mimetype = file.mimetype;
@@ -69,7 +69,8 @@ router.post('/samples/:sampleId', verifyToken, upload.array('photos', 10), async
       // Handle HEIC conversion natively in backend
       if (fileExt === '.heic' || fileExt === '.heif' || mimetype.includes('heic') || mimetype.includes('heif')) {
         try {
-          buffer = await heicConvert({
+          const convertFn = typeof heicConvert === 'function' ? heicConvert : (heicConvert.default || heicConvert['module.exports']);
+          buffer = await convertFn({
             buffer: file.buffer,
             format: 'JPEG',
             quality: 0.8
@@ -79,7 +80,7 @@ router.post('/samples/:sampleId', verifyToken, upload.array('photos', 10), async
           originalname = originalname.replace(/\.hei[cf]$/i, '.jpg');
         } catch (convErr) {
           console.error('Backend HEIC conversion error:', convErr);
-          return res.status(500).json({ error: 'Failed to process HEIC image' });
+          throw new Error('Failed to process HEIC image');
         }
       }
 
@@ -97,7 +98,7 @@ router.post('/samples/:sampleId', verifyToken, upload.array('photos', 10), async
 
       if (uploadError) {
         console.error('Supabase upload error:', uploadError);
-        return res.status(500).json({ error: `Storage error: ${uploadError.message}` });
+        throw new Error(`Storage error: ${uploadError.message}`);
       }
 
       // Get public URL
@@ -112,7 +113,7 @@ router.post('/samples/:sampleId', verifyToken, upload.array('photos', 10), async
           sample_id: sampleId,
           file_path: publicUrl,
           file_name: originalname,
-          display_order: nextOrder++,
+          display_order: nextOrder + index,
           is_main_photo: false,
           photo_type: req.body.photo_type || 'Other'
         })
@@ -121,13 +122,19 @@ router.post('/samples/:sampleId', verifyToken, upload.array('photos', 10), async
 
       if (insertError) {
         console.error('Database insert error:', insertError);
-        return res.status(500).json({ error: `Database error: ${insertError.message}` });
-      } else {
-        uploadedPhotos.push(photoRecord);
+        throw new Error(`Database error: ${insertError.message}`);
       }
-    }
 
-    res.status(201).json(uploadedPhotos);
+      return photoRecord;
+    });
+
+    try {
+      const uploadedPhotos = await Promise.all(uploadPromises);
+      res.status(201).json(uploadedPhotos);
+    } catch (err) {
+      console.error('Parallel upload error:', err);
+      return res.status(500).json({ error: err.message });
+    }
   } catch (error) {
     console.error('Photo upload error:', error);
     res.status(500).json({ error: error.message || 'Failed to upload photos' });
@@ -212,6 +219,28 @@ router.put('/:photoId/order', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Update photo order error:', error);
     res.status(500).json({ error: 'Failed to update photo order' });
+  }
+});
+
+// Update photo title (stored in file_name)
+router.put('/:photoId/title', verifyToken, async (req, res) => {
+  try {
+    const { photoId } = req.params;
+    const { title } = req.body;
+
+    const { error } = await supabase
+      .from('sample_photos')
+      .update({ file_name: title })
+      .eq('id', photoId);
+
+    if (error) {
+      return res.status(500).json({ error: 'Failed to update photo title' });
+    }
+
+    res.json({ message: 'Photo title updated successfully' });
+  } catch (error) {
+    console.error('Update photo title error:', error);
+    res.status(500).json({ error: 'Failed to update photo title' });
   }
 });
 

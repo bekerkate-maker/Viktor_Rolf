@@ -136,6 +136,9 @@ export const photosAPI = {
   updateOrder: async (photoId: string | number, display_order: number) => {
     return api.put(`/photos/${photoId}/order`, { display_order });
   },
+  updateTitle: async (photoId: string | number, title: string) => {
+    return api.put(`/photos/${photoId}/title`, { title });
+  },
   deletePhoto: async (photoId: string | number) => {
     return api.delete(`/photos/${photoId}`);
   },

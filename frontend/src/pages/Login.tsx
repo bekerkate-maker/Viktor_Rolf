@@ -12,32 +12,11 @@ function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Auto-login for development
   useEffect(() => {
-    const autoLogin = async () => {
-      try {
-        const response = await axios.post('/api/auth/login', {
-          email: 'sophie.laurent@viktor-rolf.com',
-          password: 'password123'
-        });
-
-        // Store token and user info
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-
-        // Redirect to quality control
-        navigate('/quality-control');
-      } catch (err) {
-        console.error('Auto-login failed:', err);
-      }
-    };
-
     // Check if already logged in
     const token = localStorage.getItem('token');
     if (token) {
       navigate('/quality-control');
-    } else {
-      autoLogin();
     }
   }, [navigate]);
 

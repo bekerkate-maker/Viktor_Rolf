@@ -10,6 +10,35 @@ import EditSampleModal from '../components/EditSampleModal';
 import { Plus, X, ChevronLeft, ChevronRight, Trash2, Pencil, Check, Minus, Download, Scissors, Ruler, ClipboardCheck, Save, EyeOff, Eye, Activity, RefreshCw, Tag, Calendar, Factory, User, AlignLeft } from 'lucide-react';
 import { processFilesForUpload } from '../utils/heicConverter';
 
+const DEFAULT_FIT_SECTIONS = [
+  {
+    name: 'Tops, Jackets & Dresses',
+    items: [
+      'Total length (HSP)', '½ chest width', '½ waist width', '½ hip width', '½ hem width', 'Back yoke', 'Shoulder width', 'Sleeve length', '½ bicep width', '½ cuff width', 'Neck width (STS)', 'Front neck drop', 'Back neck drop'
+    ]
+  },
+  {
+    name: 'Bottoms (Pants & Skirts)',
+    items: [
+      '½ waist width', '½ hip width', '½ thigh width', 'Front rise', 'Back rise', 'inseam', 'Side seam', '½ leg opening'
+    ]
+  },
+  {
+    name: 'Movement & Drape',
+    items: [
+      'Ease of movement', 'Balance'
+    ]
+  }
+];
+
+const DEFAULT_WORK_SECTIONS = [
+  {
+    name: 'Workmanship Details',
+    items: [
+      'Topstitching placement', 'Topstitching distance', 'Stitching tension', 'Yarn thickness', 'Button attachement', 'Button hole', 'Overlock', 'Loose threads', 'Pattern matching', 'Hem finishing', 'Lining attachement', 'Zipper functionality', 'Interfacing quality', 'Pressing quality', 'Label positioning', 'Hook and eye security', 'Snap fastener strength', 'Shoulder pad stability', 'Embroidery attachement'
+    ]
+  }
+];
 
 function SampleDetail() {
   const params = useParams<{ id: string; collectionId?: string }>();
@@ -29,6 +58,9 @@ function SampleDetail() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [selectedQCPhoto, setSelectedQCPhoto] = useState<SamplePhoto | null>(null);
+  const [qcPhotoTitle, setQcPhotoTitle] = useState('');
+  const [savingTitle, setSavingTitle] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedName, setEditedName] = useState('');
   const [editedSampleCode, setEditedSampleCode] = useState('');
@@ -86,73 +118,8 @@ function SampleDetail() {
   const [showHiddenFit, setShowHiddenFit] = useState(false);
   const [showHiddenWork, setShowHiddenWork] = useState(false);
 
-  const [fitSections, setFitSections] = useState([
-    {
-      name: 'Tops, Jackets & Dresses',
-      items: [
-        'Total length (HSP)',
-        '½ chest width',
-        '½ waist width',
-        '½ hip width',
-        '½ hem width',
-        'Back yoke',
-        'Shoulder width',
-        'Sleeve length',
-        '½ bicep width',
-        '½ cuff width',
-        'Neck width (STS)',
-        'Front neck drop',
-        'Back neck drop'
-      ]
-    },
-    {
-      name: 'Bottoms (Pants & Skirts)',
-      items: [
-        '½ waist width',
-        '½ hip width',
-        '½ thigh width',
-        'Front rise',
-        'Back rise',
-        'inseam',
-        'Side seam',
-        '½ leg opening'
-      ]
-    },
-    {
-      name: 'Movement & Drape',
-      items: [
-        'Ease of movement',
-        'Balance'
-      ]
-    }
-  ]);
-
-  const [workSections, setWorkSections] = useState([
-    {
-      name: 'Workmanship Details',
-      items: [
-        'Topstitching placement',
-        'Topstitching distance',
-        'Stitching tension',
-        'Yarn thickness',
-        'Button attachement',
-        'Button hole',
-        'Overlock',
-        'Loose threads',
-        'Pattern matching',
-        'Hem finishing',
-        'Lining attachement',
-        'Zipper functionality',
-        'Interfacing quality',
-        'Pressing quality',
-        'Label positioning',
-        'Hook and eye security',
-        'Snap fastener strength',
-        'Shoulder pad stability',
-        'Embroidery attachement'
-      ]
-    }
-  ]);
+  const [fitSections, setFitSections] = useState(DEFAULT_FIT_SECTIONS);
+  const [workSections, setWorkSections] = useState(DEFAULT_WORK_SECTIONS);
 
   const [selectedFitCategory, setSelectedFitCategory] = useState('');
   const [selectedWorkCategory, setSelectedWorkCategory] = useState('');
@@ -603,7 +570,9 @@ function SampleDetail() {
               fitComments: parsed.fitComments || {},
               workComments: parsed.workComments || {},
               hiddenFitItems: parsed.hiddenFitItems || [],
-              hiddenWorkItems: parsed.hiddenWorkItems || []
+              hiddenWorkItems: parsed.hiddenWorkItems || [],
+              fitSections: parsed.fitSections || DEFAULT_FIT_SECTIONS,
+              workSections: parsed.workSections || DEFAULT_WORK_SECTIONS
             };
           }
         } catch (e) {
@@ -617,6 +586,8 @@ function SampleDetail() {
       setWorkComments(stateToSave.workComments);
       setHiddenFitItems(stateToSave.hiddenFitItems);
       setHiddenWorkItems(stateToSave.hiddenWorkItems);
+      setFitSections(stateToSave.fitSections);
+      setWorkSections(stateToSave.workSections);
       
       setSavedStateString(JSON.stringify(stateToSave));
       setHasUnsavedChanges(false);
@@ -632,10 +603,12 @@ function SampleDetail() {
       fitComments,
       workComments,
       hiddenFitItems,
-      hiddenWorkItems
+      hiddenWorkItems,
+      fitSections,
+      workSections
     });
     setHasUnsavedChanges(currentStateString !== savedStateString);
-  }, [fitChecks, workChecks, fitComments, workComments, hiddenFitItems, hiddenWorkItems, savedStateString]);
+  }, [fitChecks, workChecks, fitComments, workComments, hiddenFitItems, hiddenWorkItems, fitSections, workSections, savedStateString]);
 
   const loadPhotos = async (sampleId: string) => {
     try {
@@ -686,6 +659,27 @@ function SampleDetail() {
       alert(msg);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleSaveQcTitle = async () => {
+    if (!selectedQCPhoto) return;
+    const words = qcPhotoTitle.trim().split(/\s+/).filter(w => w.length > 0);
+    if (words.length > 10) {
+      alert('The title can be a maximum of 10 words.');
+      return;
+    }
+    
+    setSavingTitle(true);
+    try {
+      await photosAPI.updateTitle(selectedQCPhoto.id, qcPhotoTitle);
+      setPhotos(photos.map(p => p.id === selectedQCPhoto.id ? { ...p, file_name: qcPhotoTitle } : p));
+      setSelectedQCPhoto(null);
+    } catch (error) {
+      console.error('Error updating title:', error);
+      alert('Failed to update title.');
+    } finally {
+      setSavingTitle(false);
     }
   };
 
@@ -764,6 +758,8 @@ function SampleDetail() {
       parsed.workComments = workComments;
       parsed.hiddenFitItems = hiddenFitItems as any;
       parsed.hiddenWorkItems = hiddenWorkItems as any;
+      parsed.fitSections = fitSections as any;
+      parsed.workSections = workSections as any;
 
       const now = new Date().toISOString();
       await samplesAPI.update(String(sample?.id), {
@@ -780,7 +776,9 @@ function SampleDetail() {
         fitComments,
         workComments,
         hiddenFitItems,
-        hiddenWorkItems
+        hiddenWorkItems,
+        fitSections,
+        workSections
       }));
       setLastSavedAt(now);
       
@@ -1001,8 +999,15 @@ function SampleDetail() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
               {qcPhotos.map(photo => (
-                <div key={photo.id} style={{ width: '100%', aspectRatio: '1/1', border: '1px solid #eee' }}>
-                  <img src={photo.file_path} alt="QC" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <div key={photo.id} style={{ width: '100%', breakInside: 'avoid', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ aspectRatio: '1/1', border: '1px solid #eee' }}>
+                    <img src={photo.file_path} alt="QC" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                  {photo.file_name && (
+                    <div style={{ fontSize: 9, color: '#333', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.2 }}>
+                      {photo.file_name}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1853,14 +1858,20 @@ function SampleDetail() {
             {qcPhotos.length > 0 && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12, marginBottom: 16 }}>
                 {qcPhotos.map((photo, index) => (
-                  <div key={photo.id} style={{ position: 'relative', width: '100%', aspectRatio: '1/1', border: '1px solid #eee', borderRadius: 8, overflow: 'hidden' }}>
+                  <div key={photo.id} style={{ position: 'relative', width: '100%', aspectRatio: '1/1', border: '1px solid #eee', borderRadius: 8, overflow: 'hidden', cursor: 'pointer' }}
+                       onClick={() => { setSelectedQCPhoto(photo); setQcPhotoTitle(photo.file_name || ''); }}>
                     <img src={photo.file_path} alt="QC" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <button
-                      onClick={() => handleDeletePhoto(photo.id)}
-                      style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(255,255,255,0.8)', border: 'none', borderRadius: '50%', padding: 4, cursor: 'pointer', color: '#e53935' }}
+                      onClick={(e) => { e.stopPropagation(); handleDeletePhoto(photo.id); }}
+                      style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(255,255,255,0.8)', border: 'none', borderRadius: '50%', padding: 4, cursor: 'pointer', color: '#e53935', zIndex: 2 }}
                     >
                       <Trash2 size={14} />
                     </button>
+                    {photo.file_name && (
+                      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(255,255,255,0.9)', fontSize: 10, padding: '4px 6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', borderTop: '1px solid #eee' }}>
+                        {photo.file_name}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -2310,6 +2321,88 @@ function SampleDetail() {
               >
                 Annuleren
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox & Title Edit for QC Photos */}
+      {selectedQCPhoto && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(255,255,255,0.95)',
+          WebkitBackdropFilter: 'blur(4px)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 1000,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <button
+            onClick={() => setSelectedQCPhoto(null)}
+            style={{
+              position: 'absolute',
+              top: 32,
+              right: 32,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#111',
+              padding: 8,
+              zIndex: 10
+            }}
+          >
+            <X size={32} strokeWidth={1} />
+          </button>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24, alignItems: 'center', width: '100%', maxWidth: '80vw' }}>
+            <img 
+              src={selectedQCPhoto.file_path} 
+              alt="QC Preview"
+              style={{
+                maxWidth: '90vw',
+                maxHeight: '70vh',
+                objectFit: 'contain',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.1)'
+              }} 
+            />
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', maxWidth: 600 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Photo Title (max 10 words)</label>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <input 
+                  type="text"
+                  value={qcPhotoTitle}
+                  onChange={(e) => setQcPhotoTitle(e.target.value)}
+                  placeholder="e.g. Broken zipper on back"
+                  style={{ flex: 1, padding: '12px 16px', border: '1px solid #ddd', borderRadius: 8, fontSize: 15 }}
+                />
+                <button
+                  onClick={handleSaveQcTitle}
+                  disabled={savingTitle}
+                  style={{
+                    padding: '0 24px',
+                    background: '#111',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    fontWeight: 600,
+                    cursor: savingTitle ? 'not-allowed' : 'pointer',
+                    opacity: savingTitle ? 0.7 : 1
+                  }}
+                >
+                  {savingTitle ? 'Saving...' : 'Save Title'}
+                </button>
+              </div>
+              <span style={{ fontSize: 12, color: qcPhotoTitle.trim().split(/\s+/).filter(w => w.length > 0).length > 10 ? '#e53935' : '#999' }}>
+                Words: {qcPhotoTitle.trim().split(/\s+/).filter(w => w.length > 0).length} / 10
+              </span>
             </div>
           </div>
         </div>
