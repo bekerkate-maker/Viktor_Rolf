@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import html2pdf from 'html2pdf.js';
-import InternalNotesSection from '../components/InternalNotesSection';
+import InternalNotesSection, { NoteEntry } from '../components/InternalNotesSection';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { samplesAPI, photosAPI, manufacturersAPI } from '../api';
 import type { Sample, SamplePhoto } from '../types';
@@ -103,6 +103,9 @@ function SampleDetail() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [savedStateString, setSavedStateString] = useState<string>('');
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [savedNote, setSavedNote] = useState<NoteEntry | null>(null);
+  const [noteText, setNoteText] = useState('');
+  const [isEditingNote, setIsEditingNote] = useState(true);
 
   const [fitChecks, setFitChecks] = useState<Record<string, 'reject' | 'doubt' | 'approve'>>({});
   const [workChecks, setWorkChecks] = useState<Record<string, 'reject' | 'doubt' | 'approve'>>({});
@@ -560,6 +563,8 @@ function SampleDetail() {
         hiddenWorkItems: []
       };
 
+      let parsedNote: NoteEntry | null = null;
+
       if (sample.internal_notes) {
         try {
           const parsed = JSON.parse(sample.internal_notes);
@@ -574,9 +579,28 @@ function SampleDetail() {
               fitSections: parsed.fitSections || DEFAULT_FIT_SECTIONS,
               workSections: parsed.workSections || DEFAULT_WORK_SECTIONS
             };
+            if (parsed.notes) {
+              parsedNote = {
+                text: parsed.notes,
+                author: parsed.noteAuthor || 'Sophie Laurent',
+                date: parsed.noteDate || ''
+              };
+            }
+          } else if (sample.internal_notes && !sample.internal_notes.startsWith('{')) {
+            parsedNote = {
+              text: sample.internal_notes,
+              author: 'Sophie Laurent',
+              date: ''
+            };
           }
         } catch (e) {
-          // Plain text fallback, nothing to parse into checklists
+          if (sample.internal_notes && !sample.internal_notes.startsWith('{')) {
+            parsedNote = {
+              text: sample.internal_notes,
+              author: 'Sophie Laurent',
+              date: ''
+            };
+          }
         }
       }
 
@@ -590,6 +614,11 @@ function SampleDetail() {
       setWorkSections(stateToSave.workSections);
       
       setSavedStateString(JSON.stringify(stateToSave));
+
+      setSavedNote(parsedNote);
+      setNoteText(parsedNote ? parsedNote.text : '');
+      setIsEditingNote(!parsedNote);
+
       setHasUnsavedChanges(false);
     }
   }, [sample]);
@@ -607,8 +636,10 @@ function SampleDetail() {
       fitSections,
       workSections
     });
-    setHasUnsavedChanges(currentStateString !== savedStateString);
-  }, [fitChecks, workChecks, fitComments, workComments, hiddenFitItems, hiddenWorkItems, fitSections, workSections, savedStateString]);
+    const checklistChanged = currentStateString !== savedStateString;
+    const noteChanged = noteText.trim() !== (savedNote ? savedNote.text.trim() : '');
+    setHasUnsavedChanges(checklistChanged || noteChanged);
+  }, [fitChecks, workChecks, fitComments, workComments, hiddenFitItems, hiddenWorkItems, fitSections, workSections, savedStateString, noteText, savedNote]);
 
   const loadPhotos = async (sampleId: string) => {
     try {
@@ -737,7 +768,19 @@ function SampleDetail() {
   };
 
   const handleSaveAssessment = async () => {
-    if (!hasUnsavedChanges && lastSavedAt) return true;
+    const checklistChanged = JSON.stringify({
+      fitChecks,
+      workChecks,
+      fitComments,
+      workComments,
+      hiddenFitItems,
+      hiddenWorkItems,
+      fitSections,
+      workSections
+    }) !== savedStateString;
+    const noteChanged = noteText.trim() !== (savedNote ? savedNote.text.trim() : '');
+
+    if (!checklistChanged && !noteChanged && lastSavedAt) return true;
     setSavingChecks(true);
     try {
       let parsed = { _isJsonBlob: true, notes: '', fitChecks: {}, workChecks: {}, fitComments: {}, workComments: {}, hiddenFitItems: [], hiddenWorkItems: [] };
@@ -760,6 +803,27 @@ function SampleDetail() {
       parsed.hiddenWorkItems = hiddenWorkItems as any;
       parsed.fitSections = fitSections as any;
       parsed.workSections = workSections as any;
+
+      if (noteChanged) {
+        const nowFormatted = new Date().toLocaleString('nl-NL', { 
+          day: '2-digit', 
+          month: '2-digit', 
+          year: 'numeric', 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
+        parsed.notes = noteText.trim();
+        parsed.noteAuthor = 'Sophie Laurent'; // CURRENT_USER
+        parsed.noteDate = nowFormatted;
+
+        // Update local state for savedNote
+        setSavedNote({
+          text: noteText.trim(),
+          author: 'Sophie Laurent',
+          date: nowFormatted
+        });
+        setIsEditingNote(false);
+      }
 
       const now = new Date().toISOString();
       await samplesAPI.update(String(sample?.id), {
@@ -902,7 +966,7 @@ function SampleDetail() {
           </div>
           <div className="print-info-container">
             <div className="print-info-item" style={{ marginBottom: '10px' }}>
-              <span className="print-info-label" style={{ fontWeight: 'bold' }}>Article Identification: </span>
+              <span className="print-info-label" style={{ fontWeight: 'bold' }}>Article Number: </span>
               <span style={{ fontWeight: 'normal' }}>{sample.sample_code}</span>
             </div>
             <div className="print-info-item" style={{ marginBottom: '6px' }}>
@@ -1919,7 +1983,15 @@ function SampleDetail() {
           {/* Internal Notes in een full-width block eronder */}
           <div className="luxury-card no-print" style={{ border: '1px solid #eee', borderRadius: 12, background: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', padding: 24, display: 'flex', flexDirection: 'column', marginBottom: 32 }}>
             <h3 className="luxury-card-title" style={{ fontWeight: 600, fontSize: 18, letterSpacing: 1, marginBottom: 16 }}>Internal Notes & Final Remarks</h3>
-            <InternalNotesSection sample={sample} />
+            <InternalNotesSection 
+              sample={sample} 
+              noteText={noteText}
+              setNoteText={setNoteText}
+              savedNote={savedNote}
+              setSavedNote={setSavedNote}
+              isEditing={isEditingNote}
+              setIsEditing={setIsEditingNote}
+            />
           </div>
 
         </div>

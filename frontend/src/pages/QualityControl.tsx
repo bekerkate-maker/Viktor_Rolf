@@ -2009,7 +2009,7 @@ function QualityControl() {
                 </div>
                 <div className="print-info-container">
                   <div className="print-info-item">
-                    <span className="print-info-label" style={{ fontWeight: 'bold' }}>Article Identification: </span>
+                    <span className="print-info-label" style={{ fontWeight: 'bold' }}>Article Number: </span>
                     <span style={{ fontWeight: 'normal' }}>{sample.sample_code}</span>
                   </div>
                   <div className="print-info-item">
