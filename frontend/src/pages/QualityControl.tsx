@@ -2084,6 +2084,10 @@ function QualityControl() {
                 </div>
               </div>
 
+              <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#666', marginTop: '-10px', marginBottom: '15px', textAlign: 'center' }}>
+                * Note: Items marked with <span style={{ color: '#d32f2f', fontWeight: 'bold', fontSize: '12px' }}>✕</span> need improvement and are not good.
+              </div>
+
               {/* BOTTOM ROW - Internal Notes */}
               <div className="print-notes-container">
                 <div style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: '12px', marginBottom: '8px', borderBottom: '1px solid #ddd', paddingBottom: '4px' }}>
