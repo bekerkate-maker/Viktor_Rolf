@@ -175,7 +175,7 @@ function SampleDetail() {
         onDrop={(e) => sectionIndex !== undefined && itemIndex !== undefined && handleDrop(e, sectionIndex, itemIndex, sections, setStateSections, type)}
         style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'minmax(0, 1fr) 50px 50px 40px', 
+          gridTemplateColumns: 'minmax(0, 1fr) 70px 70px 40px', 
           gap: 8, 
           alignItems: 'center', 
           padding: '12px 0', 
@@ -295,9 +295,10 @@ function SampleDetail() {
               setState(newState);
             }
           }}
-          style={{ width: 24, height: 24, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: showHidden ? 'default' : 'pointer', borderRadius: '50%', background: state[item] === 'reject' ? '#e53935' : 'transparent', border: state[item] === 'reject' ? '2px solid #e53935' : '2px solid #ddd', transition: 'all 0.2s', opacity: showHidden ? 0.4 : 1 }}
+          style={{ width: 70, height: 40, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: showHidden ? 'default' : 'pointer', borderRadius: 8, background: state[item] === 'reject' ? '#ffeeee' : '#f9f9f9', color: state[item] === 'reject' ? '#e53935' : '#ccc', border: state[item] === 'reject' ? '2px solid #e53935' : '1px solid #eee', transition: 'all 0.2s', opacity: showHidden ? 0.4 : 1 }}
           title="Fail"
         >
+          <X size={20} strokeWidth={state[item] === 'reject' ? 3 : 2} />
         </div>
 
         <div
@@ -309,9 +310,10 @@ function SampleDetail() {
               setState(newState);
             }
           }}
-          style={{ width: 24, height: 24, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: showHidden ? 'default' : 'pointer', borderRadius: '50%', background: state[item] === 'approve' ? '#43a047' : 'transparent', border: state[item] === 'approve' ? '2px solid #43a047' : '2px solid #ddd', transition: 'all 0.2s', opacity: showHidden ? 0.4 : 1 }}
+          style={{ width: 70, height: 40, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: showHidden ? 'default' : 'pointer', borderRadius: 8, background: state[item] === 'approve' ? '#e8f5e9' : '#f9f9f9', color: state[item] === 'approve' ? '#43a047' : '#ccc', border: state[item] === 'approve' ? '2px solid #43a047' : '1px solid #eee', transition: 'all 0.2s', opacity: showHidden ? 0.4 : 1 }}
           title="Approved"
         >
+          <Check size={20} strokeWidth={state[item] === 'approve' ? 3 : 2} />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -361,13 +363,13 @@ function SampleDetail() {
           )}
         </div>
 
-        <div className="assessment-checklist-row assessment-checklist-header-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 50px 50px 40px', gap: 8, alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: 8, marginBottom: 12, fontWeight: 600, color: '#888', fontSize: 11, textTransform: 'uppercase' }}>
+        <div className="assessment-checklist-row assessment-checklist-header-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 70px 70px 40px', gap: 8, alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: 8, marginBottom: 12, fontWeight: 600, color: '#888', fontSize: 11, textTransform: 'uppercase' }}>
           <div>Item</div>
-          <div style={{ display: 'flex', justifyContent: 'center' }} title="Fail">
-            <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#e53935' }}></div>
+          <div style={{ display: 'flex', justifyContent: 'center', color: '#e53935' }} title="Fail">
+            <X size={16} strokeWidth={3} />
           </div>
-          <div style={{ display: 'flex', justifyContent: 'center' }} title="Approved">
-            <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#43a047' }}></div>
+          <div style={{ display: 'flex', justifyContent: 'center', color: '#43a047' }} title="Approved">
+            <Check size={16} strokeWidth={3} />
           </div>
           <div />
         </div>
