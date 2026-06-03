@@ -366,10 +366,10 @@ function SampleDetail() {
         <div className="assessment-checklist-row assessment-checklist-header-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 70px 70px 40px', gap: 8, alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: 8, marginBottom: 12, fontWeight: 600, color: '#888', fontSize: 11, textTransform: 'uppercase' }}>
           <div>Item</div>
           <div style={{ display: 'flex', justifyContent: 'center', color: '#e53935' }} title="Fail">
-            <X size={20} strokeWidth={3} />
+            <X size={20} strokeWidth={2} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', color: '#43a047' }} title="Approved">
-            <Check size={20} strokeWidth={3} />
+            <Check size={20} strokeWidth={2} />
           </div>
           <div />
         </div>
@@ -995,7 +995,7 @@ function SampleDetail() {
               {Object.keys(fitChecks).map(key => {
                 const value = fitChecks[key];
                 if (value === 'approve' || !value) return null;
-                const label = value === 'reject' ? '✖' : String(value);
+                const label = value === 'reject' ? '✕' : String(value);
                 return (
                   <div key={key} className="print-assessment-item" style={{ marginBottom: '10px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
                     <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold', fontSize: value === 'reject' ? '14px' : '10px', textTransform: 'uppercase' }}>
@@ -1020,7 +1020,7 @@ function SampleDetail() {
             <div className="print-assessment-list">
               {Object.entries(workChecks).map(([key, value]) => {
                 if (value === 'approve' || !value) return null;
-                const label = value === 'reject' ? '✖' : String(value);
+                const label = value === 'reject' ? '✕' : String(value);
                 return (
                   <div key={key} className="print-assessment-item" style={{ marginBottom: '10px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
                     <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold', fontSize: value === 'reject' ? '14px' : '10px', textTransform: 'uppercase' }}>
