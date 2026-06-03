@@ -998,7 +998,7 @@ function SampleDetail() {
                 const label = value === 'reject' ? '✖' : String(value);
                 return (
                   <div key={key} className="print-assessment-item" style={{ marginBottom: '10px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
-                    <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }}>
+                    <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold', fontSize: value === 'reject' ? '14px' : '10px', textTransform: 'uppercase' }}>
                       {label}
                     </span>
                     <span className="print-assessment-name" style={{ fontWeight: '500' }}>{key}</span>
@@ -1023,7 +1023,7 @@ function SampleDetail() {
                 const label = value === 'reject' ? '✖' : String(value);
                 return (
                   <div key={key} className="print-assessment-item" style={{ marginBottom: '10px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
-                    <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }}>
+                    <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold', fontSize: value === 'reject' ? '14px' : '10px', textTransform: 'uppercase' }}>
                       {label}
                     </span>
                     <span className="print-assessment-name" style={{ fontWeight: '500' }}>{key}</span>

@@ -2042,7 +2042,7 @@ function QualityControl() {
                       const label = value === 'reject' ? '✖' : String(value);
                       return (
                         <div key={key} className="print-assessment-item">
-                          <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00' }}>
+                          <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold', fontSize: value === 'reject' ? '14px' : '10px' }}>
                             {label}
                           </span>
                           <span className="print-assessment-name">{key}</span>
@@ -2067,7 +2067,7 @@ function QualityControl() {
                       const label = value === 'reject' ? '✖' : String(value);
                       return (
                         <div key={key} className="print-assessment-item" style={{ marginBottom: '8px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
-                          <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold' }}>
+                          <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold', fontSize: value === 'reject' ? '14px' : '10px' }}>
                             {label}
                           </span>
                           <span className="print-assessment-name" style={{ fontWeight: '500' }}>{key}</span>
