@@ -366,10 +366,10 @@ function SampleDetail() {
         <div className="assessment-checklist-row assessment-checklist-header-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 70px 70px 40px', gap: 8, alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: 8, marginBottom: 12, fontWeight: 600, color: '#888', fontSize: 11, textTransform: 'uppercase' }}>
           <div>Item</div>
           <div style={{ display: 'flex', justifyContent: 'center', color: '#e53935' }} title="Fail">
-            <X size={16} strokeWidth={3} />
+            <X size={20} strokeWidth={3} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', color: '#43a047' }} title="Approved">
-            <Check size={16} strokeWidth={3} />
+            <Check size={20} strokeWidth={3} />
           </div>
           <div />
         </div>
