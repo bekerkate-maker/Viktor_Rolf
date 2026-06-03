@@ -995,7 +995,7 @@ function SampleDetail() {
               {Object.keys(fitChecks).map(key => {
                 const value = fitChecks[key];
                 if (value === 'approve' || !value) return null;
-                const label = value === 'reject' ? 'Fail' : String(value);
+                const label = value === 'reject' ? '✖' : String(value);
                 return (
                   <div key={key} className="print-assessment-item" style={{ marginBottom: '10px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
                     <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }}>
@@ -1020,7 +1020,7 @@ function SampleDetail() {
             <div className="print-assessment-list">
               {Object.entries(workChecks).map(([key, value]) => {
                 if (value === 'approve' || !value) return null;
-                const label = value === 'reject' ? 'Fail' : String(value);
+                const label = value === 'reject' ? '✖' : String(value);
                 return (
                   <div key={key} className="print-assessment-item" style={{ marginBottom: '10px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
                     <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }}>

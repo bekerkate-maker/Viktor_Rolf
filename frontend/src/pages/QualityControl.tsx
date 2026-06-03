@@ -2039,7 +2039,7 @@ function QualityControl() {
                   <div className="print-assessment-list">
                     {Object.entries(assessment.fitChecks || {}).map(([key, value]) => {
                       if (value === 'approve' || !value) return null;
-                      const label = value === 'reject' ? 'Fail' : String(value);
+                      const label = value === 'reject' ? '✖' : String(value);
                       return (
                         <div key={key} className="print-assessment-item">
                           <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00' }}>
@@ -2064,7 +2064,7 @@ function QualityControl() {
                   <div className="print-assessment-list">
                     {Object.entries(assessment.workChecks || {}).map(([key, value]) => {
                       if (value === 'approve' || !value) return null;
-                      const label = value === 'reject' ? 'Fail' : String(value);
+                      const label = value === 'reject' ? '✖' : String(value);
                       return (
                         <div key={key} className="print-assessment-item" style={{ marginBottom: '8px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
                           <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold' }}>
