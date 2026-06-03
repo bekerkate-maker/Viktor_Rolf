@@ -175,7 +175,7 @@ function SampleDetail() {
         onDrop={(e) => sectionIndex !== undefined && itemIndex !== undefined && handleDrop(e, sectionIndex, itemIndex, sections, setStateSections, type)}
         style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'minmax(0, 1fr) 70px 70px 70px 40px', 
+          gridTemplateColumns: 'minmax(0, 1fr) 50px 50px 40px', 
           gap: 8, 
           alignItems: 'center', 
           padding: '12px 0', 
@@ -295,21 +295,9 @@ function SampleDetail() {
               setState(newState);
             }
           }}
-          style={{ width: 70, height: 40, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: showHidden ? 'default' : 'pointer', borderRadius: 8, background: state[item] === 'reject' ? '#ffeeee' : '#f9f9f9', color: state[item] === 'reject' ? '#e53935' : '#ccc', border: state[item] === 'reject' ? '2px solid #e53935' : '1px solid #eee', transition: 'all 0.2s', opacity: showHidden ? 0.4 : 1 }}>
-          <X size={20} strokeWidth={state[item] === 'reject' ? 3 : 2} />
-        </div>
-
-        <div
-          onClick={() => {
-            if (!showHidden) {
-              const newState = { ...state };
-              if (newState[item] === 'doubt') delete newState[item];
-              else newState[item] = 'doubt';
-              setState(newState);
-            }
-          }}
-          style={{ width: 70, height: 40, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: showHidden ? 'default' : 'pointer', borderRadius: 8, background: state[item] === 'doubt' ? '#fff8e1' : '#f9f9f9', color: state[item] === 'doubt' ? '#ffb300' : '#ccc', border: state[item] === 'doubt' ? '2px solid #ffb300' : '1px solid #eee', transition: 'all 0.2s', opacity: showHidden ? 0.4 : 1 }}>
-          <Minus size={20} strokeWidth={state[item] === 'doubt' ? 3 : 2} />
+          style={{ width: 24, height: 24, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: showHidden ? 'default' : 'pointer', borderRadius: '50%', background: state[item] === 'reject' ? '#e53935' : 'transparent', border: state[item] === 'reject' ? '2px solid #e53935' : '2px solid #ddd', transition: 'all 0.2s', opacity: showHidden ? 0.4 : 1 }}
+          title="Fail"
+        >
         </div>
 
         <div
@@ -321,8 +309,9 @@ function SampleDetail() {
               setState(newState);
             }
           }}
-          style={{ width: 70, height: 40, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: showHidden ? 'default' : 'pointer', borderRadius: 8, background: state[item] === 'approve' ? '#e8f5e9' : '#f9f9f9', color: state[item] === 'approve' ? '#43a047' : '#ccc', border: state[item] === 'approve' ? '2px solid #43a047' : '1px solid #eee', transition: 'all 0.2s', opacity: showHidden ? 0.4 : 1 }}>
-          <Check size={20} strokeWidth={state[item] === 'approve' ? 3 : 2} />
+          style={{ width: 24, height: 24, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: showHidden ? 'default' : 'pointer', borderRadius: '50%', background: state[item] === 'approve' ? '#43a047' : 'transparent', border: state[item] === 'approve' ? '2px solid #43a047' : '2px solid #ddd', transition: 'all 0.2s', opacity: showHidden ? 0.4 : 1 }}
+          title="Approved"
+        >
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -372,11 +361,14 @@ function SampleDetail() {
           )}
         </div>
 
-        <div className="assessment-checklist-row assessment-checklist-header-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 70px 70px 70px 40px', gap: 8, alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: 8, marginBottom: 12, fontWeight: 600, color: '#888', fontSize: 11, textTransform: 'uppercase' }}>
+        <div className="assessment-checklist-row assessment-checklist-header-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 50px 50px 40px', gap: 8, alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: 8, marginBottom: 12, fontWeight: 600, color: '#888', fontSize: 11, textTransform: 'uppercase' }}>
           <div>Item</div>
-          <div style={{ textAlign: 'center', color: '#e53935' }}>Fail</div>
-          <div style={{ textAlign: 'center', color: '#ffb300' }}>Review</div>
-          <div style={{ textAlign: 'center', color: '#43a047' }}>Approved</div>
+          <div style={{ display: 'flex', justifyContent: 'center' }} title="Fail">
+            <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#e53935' }}></div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center' }} title="Approved">
+            <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#43a047' }}></div>
+          </div>
           <div />
         </div>
 
@@ -1001,7 +993,7 @@ function SampleDetail() {
               {Object.keys(fitChecks).map(key => {
                 const value = fitChecks[key];
                 if (value === 'approve' || !value) return null;
-                const label = value === 'reject' ? 'Fail' : value === 'doubt' ? 'Review' : String(value);
+                const label = value === 'reject' ? 'Fail' : String(value);
                 return (
                   <div key={key} className="print-assessment-item" style={{ marginBottom: '10px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
                     <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }}>
@@ -1026,7 +1018,7 @@ function SampleDetail() {
             <div className="print-assessment-list">
               {Object.entries(workChecks).map(([key, value]) => {
                 if (value === 'approve' || !value) return null;
-                const label = value === 'reject' ? 'Fail' : value === 'doubt' ? 'Review' : String(value);
+                const label = value === 'reject' ? 'Fail' : String(value);
                 return (
                   <div key={key} className="print-assessment-item" style={{ marginBottom: '10px', paddingBottom: '4px', borderBottom: '1px dashed #eee' }}>
                     <span className="print-assessment-status" style={{ color: value === 'reject' ? '#d32f2f' : '#f57c00', float: 'right', fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }}>
