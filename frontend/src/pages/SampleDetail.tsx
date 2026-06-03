@@ -1040,8 +1040,8 @@ function SampleDetail() {
           </div>
         </div>
 
-        <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#666', marginTop: '-10px', marginBottom: '15px', textAlign: 'center' }}>
-          * Note: Items marked with <span style={{ color: '#d32f2f', fontWeight: 'bold', fontSize: '12px' }}>✕</span> need improvement and are not good.
+        <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#111', marginTop: '-10px', marginBottom: '15px', textAlign: 'center' }}>
+          * Note: Items marked with <span style={{ color: '#d32f2f', fontWeight: 'bold', fontSize: '12px' }}>✕</span> did not pass quality control and require adjustments.
         </div>
 
         <div className="print-notes-container">
