@@ -20,6 +20,11 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'All fields are required' });
     }
 
+    // Restrict registration to maria@viktor-rolf.com
+    if (email.toLowerCase() !== 'maria@viktor-rolf.com') {
+      return res.status(403).json({ error: 'You are not authorized to create an account' });
+    }
+
     // Check if user already exists
     const { data: existingUser } = await supabase
       .from('users')
